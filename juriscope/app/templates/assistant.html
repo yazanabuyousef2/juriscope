@@ -2,409 +2,219 @@
 {% block title %}المساعد القانوني – Mizan{% endblock %}
 
 {% block content %}
-<section class="min-h-screen py-12 px-4">
-  <div class="max-w-6xl mx-auto">
+{% set usage = usage|default({'analyses': 0, 'documents': 0, 'cases': 0}) %}
+{% set limits = limits|default({'analyses_per_month': 0, 'documents_per_month': 0, 'cases': 0}) %}
 
-    <!-- Header -->
+<section class="min-h-screen py-12 px-4">
+  <div class="max-w-7xl mx-auto">
+
     <div class="text-center mb-10">
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-xs font-medium mb-4">
         <div class="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse"></div>
-        مساعد قانوني ذكي حسب الدولة ونوع القضية
+        خدمة خاصة بالمستخدمين المسجلين
       </div>
-      <h1 class="text-3xl sm:text-4xl font-bold mb-3">صف حالتك القانونية</h1>
+      <h1 class="text-3xl sm:text-4xl font-bold mb-3">مساعد Mizan القانوني</h1>
       <p class="text-slate-400 max-w-2xl mx-auto">
-        اختر الدولة ونوع القضية والباقة، ثم اكتب سؤالك لتحصل على تحليل منظم يتكيّف مع النظام القانوني المختار.
+        اختر الدولة ونوع القضية، واربط التحليل بقضية محفوظة إذا أردت، ثم اكتب سؤالك أو ارفع مستندًا لتحليله.
       </p>
     </div>
 
     <div class="grid lg:grid-cols-5 gap-6">
 
-      <!-- Input panel -->
       <div class="lg:col-span-2 space-y-4">
 
-        <!-- Jurisdiction and plan -->
         <div class="glass-card rounded-2xl p-5 border border-white/10">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="font-semibold text-white">إعدادات التحليل</h2>
+              <p class="text-xs text-slate-400 mt-1">الباقة الحالية: <span class="text-gold-400">{{ plan_names.get(user.plan, 'المجانية') if plan_names else user.plan }}</span></p>
+            </div>
+            <a href="/pricing" class="text-xs text-gold-400 hover:text-gold-300">ترقية الباقة</a>
+          </div>
+
           <div class="grid sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-slate-300 mb-2">اختر الدولة</label>
               <select id="country-select" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-gold-400/50">
-                <option>الأردن</option>
-                <option>السعودية</option>
-                <option>الإمارات</option>
-                <option>مصر</option>
-                <option>العراق</option>
-                <option>قطر</option>
-                <option>الكويت</option>
-                <option>البحرين</option>
-                <option>عُمان</option>
+                {% for c in ["الأردن","السعودية","الإمارات","مصر","العراق","قطر","الكويت","البحرين","عُمان"] %}
+                  <option>{{ c }}</option>
+                {% endfor %}
               </select>
             </div>
 
             <div>
               <label class="block text-xs font-semibold text-slate-300 mb-2">نوع القضية</label>
               <select id="case-type-select" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-gold-400/50">
-                <option>مدني</option>
-                <option>تجاري</option>
-                <option>عقود</option>
-                <option>شركات</option>
-                <option>عمالي</option>
-                <option>إيجارات</option>
-                <option>أحوال شخصية</option>
-                <option>جنائي</option>
-                <option>شيكات ومطالبات مالية</option>
-                <option>ملكية فكرية</option>
-                <option>إداري</option>
-                <option>أخرى</option>
+                {% for t in ["مدني","تجاري","عقود","شركات","عمالي","إيجارات","أحوال شخصية","جنائي","شيكات ومطالبات مالية","ملكية فكرية","إداري","أخرى"] %}
+                  <option>{{ t }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
 
           <div class="mt-4">
-            <label class="block text-xs font-semibold text-slate-300 mb-2">الباقة</label>
-            <select id="plan-select" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-gold-400/50">
-              <option value="المجانية">المجانية — تحليل قانوني أساسي مع خطوات أولية</option>
-              <option value="الأفراد">الأفراد — تحليل أعمق ومستندات وملخص للمحامي</option>
-              <option value="الأعمال">الأعمال — قضايا الشركات والعقود والمخاطر التجارية</option>
-              <option value="المحامون">المحامون — صياغة احترافية وتحليل نقاط القوة والضعف</option>
+            <label class="block text-xs font-semibold text-slate-300 mb-2">ربط التحليل بقضية محفوظة</label>
+            <select id="case-id-select" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-gold-400/50">
+              <option value="">بدون ربط بقضية</option>
+              {% for case in cases %}
+                <option value="{{ case.id }}">#{{ case.id }} — {{ case.title }}</option>
+              {% endfor %}
             </select>
+            <p class="text-[11px] text-slate-500 mt-2">لإنشاء قضية جديدة اذهب إلى <a href="/cases/new" class="text-gold-400">إنشاء قضية</a>.</p>
+          </div>
+
+          <div class="grid sm:grid-cols-3 gap-3 mt-4 text-xs text-slate-400">
+            <div class="rounded-xl bg-white/5 border border-white/10 p-3">التحليلات: <span class="text-white">{{ usage.analyses }}/{{ limits.analyses_per_month }}</span></div>
+            <div class="rounded-xl bg-white/5 border border-white/10 p-3">المستندات: <span class="text-white">{{ usage.documents }}/{{ limits.documents_per_month }}</span></div>
+            <div class="rounded-xl bg-white/5 border border-white/10 p-3">القضايا: <span class="text-white">{{ usage.cases }}/{{ limits.cases }}</span></div>
           </div>
         </div>
 
-        <!-- Criminal details -->
         <div id="criminal-details-panel" class="hidden glass-card rounded-2xl p-5 border border-red-500/20 bg-red-500/5">
-          <div class="flex items-start gap-2 mb-4">
-            <div class="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center text-red-300">!</div>
-            <div>
-              <h3 class="text-sm font-bold text-white">تفاصيل إضافية للقضية الجنائية</h3>
-              <p class="text-xs text-slate-400 leading-relaxed">هذه البيانات تساعد على تقدير المخاطر والنطاق العقابي المحتمل دون اعتبار الشخص مذنبًا.</p>
-            </div>
-          </div>
-
+          <h3 class="font-semibold text-white mb-3">تفاصيل إضافية للقضية الجنائية</h3>
           <div class="space-y-3">
-            <input id="alleged-crime-input" type="text" placeholder="نوع الجرم أو الفعل المنسوب"
-              class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-400/50" />
-
-            <div class="grid grid-cols-2 gap-3">
-              <select id="has-prior-record-select" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-red-400/50">
-                <option>هل توجد سوابق؟</option>
-                <option>لا</option>
-                <option>نعم</option>
-                <option>غير معروف</option>
-              </select>
-              <input id="prior-count-input" type="text" placeholder="عدد السوابق إن وجدت"
-                class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-400/50" />
+            <input id="alleged-crime-input" class="form-input" placeholder="نوع الجرم أو الفعل المنسوب">
+            <div class="grid sm:grid-cols-2 gap-3">
+              <select id="has-prior-record-select" class="form-input"><option>غير معروف</option><option>لا</option><option>نعم</option></select>
+              <input id="prior-count-input" class="form-input" placeholder="عدد السوابق إن وجدت">
             </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <select id="confession-select" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-red-400/50">
-                <option>هل يوجد اعتراف؟</option>
-                <option>نعم</option>
-                <option>لا</option>
-                <option>غير معروف</option>
-              </select>
-              <select id="witnesses-select" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-red-400/50">
-                <option>هل يوجد شهود؟</option>
-                <option>نعم</option>
-                <option>لا</option>
-                <option>غير معروف</option>
-              </select>
-              <select id="harm-select" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-red-400/50">
-                <option>هل يوجد ضرر؟</option>
-                <option>ضرر مادي</option>
-                <option>ضرر جسدي</option>
-                <option>ضرر مادي وجسدي</option>
-                <option>لا</option>
-                <option>غير معروف</option>
-              </select>
+            <div class="grid sm:grid-cols-3 gap-3">
+              <select id="confession-select" class="form-input"><option>غير معروف</option><option>لا</option><option>نعم</option></select>
+              <select id="witnesses-select" class="form-input"><option>غير معروف</option><option>لا</option><option>نعم</option></select>
+              <select id="harm-select" class="form-input"><option>غير معروف</option><option>لا</option><option>ضرر مادي</option><option>ضرر جسدي</option><option>ضرر مادي وجسدي</option></select>
             </div>
-
-            <textarea id="mitigating-factors-input" rows="2" placeholder="ظروف مخففة محتملة مثل الصلح، التعويض، صغر السن، عدم وجود سوابق..."
-              class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-red-400/50"></textarea>
-
-            <textarea id="aggravating-factors-input" rows="2" placeholder="ظروف مشددة محتملة مثل تكرار الفعل، وجود سلاح، ضرر جسيم، استغلال منصب..."
-              class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-red-400/50"></textarea>
+            <textarea id="mitigating-factors-input" class="form-input min-h-[70px]" placeholder="ظروف مخففة محتملة"></textarea>
+            <textarea id="aggravating-factors-input" class="form-input min-h-[70px]" placeholder="ظروف مشددة محتملة"></textarea>
           </div>
         </div>
 
-        <!-- Question textarea -->
         <div class="glass-card rounded-2xl p-5 border border-white/10">
           <label class="block text-sm font-semibold text-white mb-3">سؤالك القانوني</label>
-          <textarea
-            id="question-input"
-            rows="6"
-            placeholder="اكتب حالتك القانونية بلغة بسيطة. مثال: لدي شريك في الشركة يريد الانسحاب وأخذ العملاء معه، ما هو موقفي القانوني؟"
-            class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-gold-400/50 focus:bg-white/8 transition-all leading-relaxed"
-          ></textarea>
-          <div class="flex items-center justify-between mt-2">
+          <textarea id="question-input" class="form-input min-h-[180px]" placeholder="اكتب سؤالك القانوني بالتفصيل..."></textarea>
+          <div class="flex items-center justify-between mt-3">
             <span id="char-count" class="text-xs text-slate-500">0 حرف</span>
-            <span class="text-xs text-slate-600">الحد الأدنى: ١٠ أحرف</span>
-          </div>
-
-          <button
-            id="analyze-btn"
-            class="mt-4 w-full py-3.5 rounded-xl bg-gold-400 text-navy-950 font-bold text-sm hover:bg-gold-500 transition-all shadow-lg shadow-gold-400/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            تحليل الحالة
-          </button>
-        </div>
-
-        <!-- Document analysis -->
-        <div class="glass-card rounded-2xl p-5 border border-cyan-500/20 bg-cyan-500/5">
-          <div class="flex items-start gap-3 mb-4">
-            <div class="w-8 h-8 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-300">📎</div>
-            <div>
-              <h3 class="text-sm font-bold text-white">تحليل مستند قانوني</h3>
-              <p class="text-xs text-slate-400 leading-relaxed">يدعم PDF الممسوح والصور. ارفع عقدًا أو مستندًا وسيقوم Mizan بقراءة البنود وإظهار الثغرات.</p>
-            </div>
-          </div>
-
-          <div class="space-y-3">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-2">نوع المستند</label>
-              <select id="document-type-select" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400/50">
-                <option>عقد شراكة</option>
-                <option>عقد عمل</option>
-                <option>عقد إيجار</option>
-                <option>عقد بيع</option>
-                <option>اتفاقية خدمات</option>
-                <option>إنذار عدلي</option>
-                <option>مذكرة قانونية</option>
-                <option>مستند محكمة</option>
-                <option>شيك أو كمبيالة</option>
-                <option>مستند آخر</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-2">ارفع الملف</label>
-              <input id="document-file-input" type="file" accept="application/pdf,image/png,image/jpeg,image/webp"
-                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-slate-300 file:ml-3 file:rounded-lg file:border-0 file:bg-cyan-400 file:px-3 file:py-2 file:text-xs file:font-bold file:text-navy-950 hover:file:bg-cyan-300" />
-              <p class="text-[11px] text-slate-500 mt-2">الحد الحالي 10MB. يدعم PDF الممسوح Scanner PDF وصور JPG/PNG/WEBP.</p>
-            </div>
-
-            <textarea id="document-question-input" rows="3" placeholder="اكتب ما تريد التركيز عليه في المستند، مثل: هل يوجد خطر على الشريك؟ هل يوجد شرط جزائي غير عادل؟"
-              class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-cyan-400/50"></textarea>
-
-            <button id="analyze-document-btn" class="w-full py-3.5 rounded-xl bg-cyan-400 text-navy-950 font-bold text-sm hover:bg-cyan-300 transition-all shadow-lg shadow-cyan-400/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-              تحليل المستند
-            </button>
-          </div>
-
-          <div class="mt-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
-            <p class="text-[11px] text-slate-400 leading-relaxed">لا ترفع مستندات لا تملك حق استخدامها. التحليل يساعد على اكتشاف المخاطر ولا يغني عن مراجعة محامٍ قبل التوقيع أو اتخاذ إجراء.</p>
+            <button id="analyze-btn" class="px-5 py-3 rounded-xl bg-gold-400 text-navy-950 font-semibold hover:bg-gold-500 transition-all">تحليل الحالة</button>
           </div>
         </div>
 
-        <!-- Example questions -->
         <div class="glass-card rounded-2xl p-5 border border-white/10">
-          <div class="text-xs font-semibold text-slate-400 mb-3">أمثلة للأسئلة</div>
-          <div class="space-y-2">
-            <button class="example-btn w-full text-right text-xs text-slate-400 hover:text-white bg-white/3 hover:bg-white/8 border border-white/5 hover:border-white/15 rounded-lg p-3 transition-all leading-relaxed">
-              لدي شريك في الشركة يريد الانسحاب وأخذ العملاء معه، ماذا يمكنني أن أفعل؟
-            </button>
-            <button class="example-btn w-full text-right text-xs text-slate-400 hover:text-white bg-white/3 hover:bg-white/8 border border-white/5 hover:border-white/15 rounded-lg p-3 transition-all leading-relaxed">
-              وقّعت عقدًا لكن الطرف الآخر لم ينفذ التزاماته منذ 3 أشهر.
-            </button>
-            <button class="example-btn w-full text-right text-xs text-slate-400 hover:text-white bg-white/3 hover:bg-white/8 border border-white/5 hover:border-white/15 rounded-lg p-3 transition-all leading-relaxed">
-              تم اتهامي بجريمة ولم يصدر أي حكم بعد، ما المخاطر القانونية المحتملة؟
-            </button>
+          <h3 class="font-semibold text-white mb-3">تحليل مستند قانوني</h3>
+          <p class="text-xs text-slate-400 mb-4">يدعم PDF، بما في ذلك PDF الممسوح، وصور JPG/PNG/WEBP.</p>
+          <div class="space-y-3">
+            <select id="document-type-select" class="form-input">
+              {% for d in ["عقد شراكة","عقد عمل","عقد إيجار","عقد بيع","اتفاقية خدمات","إنذار عدلي","مذكرة قانونية","مستند محكمة","شيك أو كمبيالة","مستند آخر"] %}
+                <option>{{ d }}</option>
+              {% endfor %}
+            </select>
+            <input id="document-file-input" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" class="block w-full text-sm text-slate-300 file:ml-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-gold-400 file:text-navy-950 file:font-semibold">
+            <textarea id="document-question-input" class="form-input min-h-[90px]" placeholder="ملاحظات أو سؤال عن المستند، اختياري"></textarea>
+            <button id="analyze-document-btn" class="w-full px-5 py-3 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/15 transition-all">تحليل المستند</button>
           </div>
         </div>
 
-        <!-- Disclaimer -->
-        <div class="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
-          <div class="flex items-start gap-2">
-            <svg class="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            <p class="text-xs text-slate-400 leading-relaxed">للأغراض المعرفية فقط. لا يُعد التحليل حكمًا نهائيًا أو استشارة قانونية. راجع محاميًا مرخصًا دائمًا قبل أي إجراء.</p>
-          </div>
-        </div>
       </div>
 
-      <!-- Result panel -->
-      <div class="lg:col-span-3">
-
-        <!-- Empty state -->
-        <div id="empty-state" class="glass-card rounded-2xl border border-white/10 p-12 text-center h-full flex flex-col items-center justify-center min-h-80">
-          <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-5 text-3xl">⚖️</div>
-          <h3 class="text-lg font-semibold text-white mb-2">سيظهر التحليل هنا</h3>
-          <p class="text-slate-400 text-sm leading-relaxed max-w-xs">اختر الدولة ونوع القضية، ثم اكتب سؤالك واضغط على <span class="text-gold-400">تحليل الحالة</span>.</p>
-        </div>
-
-        <!-- Loading state -->
-        <div id="loading-state" class="glass-card rounded-2xl border border-white/10 p-12 text-center hidden min-h-80 flex flex-col items-center justify-center">
-          <div class="relative w-16 h-16 mb-6">
-            <div class="absolute inset-0 rounded-full border-2 border-gold-400/20"></div>
-            <div class="absolute inset-0 rounded-full border-t-2 border-gold-400 animate-spin"></div>
-            <div class="absolute inset-3 rounded-full bg-gold-400/10 flex items-center justify-center">
-              <svg class="w-5 h-5 text-gold-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-            </div>
+      <div class="lg:col-span-3 space-y-5">
+        <div id="empty-state" class="glass-card rounded-2xl border border-white/10 p-10 text-center min-h-[280px] flex flex-col items-center justify-center">
+          <div class="w-16 h-16 rounded-2xl bg-gold-400/10 border border-gold-400/20 flex items-center justify-center mb-4">
+            <img src="/static/images/mizan-logo.png" class="w-12 h-12 object-contain">
           </div>
-          <p id="loading-message" class="text-slate-300 text-sm">جاري تحليل حالتك القانونية...</p>
+          <h3 class="text-xl font-semibold mb-2">سيظهر التحليل هنا</h3>
+          <p class="text-slate-400 text-sm">اكتب السؤال أو ارفع مستندًا للحصول على تحليل منظم.</p>
         </div>
 
-        <!-- Results -->
+        <div id="loading-state" class="hidden glass-card rounded-2xl border border-white/10 p-10 text-center min-h-[280px] flex flex-col items-center justify-center">
+          <div class="loading-spinner mb-4"></div>
+          <p id="loading-message" class="text-slate-300">جاري التحليل...</p>
+        </div>
+
         <div id="result-state" class="hidden space-y-4">
-
-          <!-- Document analysis result -->
-          <div id="document-result-card" class="hidden glass-card rounded-2xl border border-cyan-500/25 p-5 bg-cyan-500/5">
-            <div class="flex items-center gap-2 mb-4">
-              <div class="w-6 h-6 rounded-lg bg-cyan-500/20 flex items-center justify-center">📎</div>
-              <span class="text-sm font-semibold text-cyan-300">تحليل المستند القانوني</span>
-            </div>
-
-            <div class="grid sm:grid-cols-2 gap-4 mb-4">
-              <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-                <div class="text-xs text-slate-500 mb-1">نوع المستند</div>
-                <p id="doc-res-type" class="text-xs text-slate-200 leading-relaxed"></p>
-              </div>
-              <div class="bg-white/5 rounded-xl p-3 border border-white/5">
-                <div class="text-xs text-slate-500 mb-1">مستوى الخطورة</div>
-                <p id="doc-res-risk-level" class="text-xs text-slate-200 leading-relaxed"></p>
-              </div>
-            </div>
-
-            <div class="bg-white/5 rounded-xl p-4 border border-white/5 mb-4">
-              <div class="text-xs font-semibold text-cyan-300 mb-2">ملخص المستند</div>
-              <p id="doc-res-summary" class="text-xs text-slate-300 leading-relaxed"></p>
-            </div>
-
-            <div class="grid sm:grid-cols-2 gap-4">
-              <div>
-                <div class="text-xs font-semibold text-slate-300 mb-2">الأطراف</div>
-                <ul id="doc-res-parties" class="space-y-2"></ul>
-              </div>
-              <div>
-                <div class="text-xs font-semibold text-blue-300 mb-2">الالتزامات الرئيسية</div>
-                <ul id="doc-res-obligations" class="space-y-2"></ul>
-              </div>
-              <div>
-                <div class="text-xs font-semibold text-red-300 mb-2">البنود الخطرة</div>
-                <ul id="doc-res-risky" class="space-y-2"></ul>
-              </div>
-              <div>
-                <div class="text-xs font-semibold text-yellow-300 mb-2">الثغرات القانونية</div>
-                <ul id="doc-res-gaps" class="space-y-2"></ul>
-              </div>
-              <div>
-                <div class="text-xs font-semibold text-purple-300 mb-2">البنود الناقصة</div>
-                <ul id="doc-res-missing" class="space-y-2"></ul>
-              </div>
-              <div>
-                <div class="text-xs font-semibold text-green-300 mb-2">تعديلات مقترحة</div>
-                <ul id="doc-res-edits" class="space-y-2"></ul>
-              </div>
-            </div>
-          </div>
-
-          <!-- Short answer -->
           <div class="glass-card rounded-2xl border border-gold-400/20 p-5">
-            <div class="flex items-center gap-2 mb-3">
-              <div class="w-6 h-6 rounded-lg bg-gold-400/20 flex items-center justify-center">⚡</div>
-              <span class="text-sm font-semibold text-gold-400">الإجابة المختصرة</span>
-            </div>
-            <p id="res-short-answer" class="text-sm text-slate-200 leading-relaxed"></p>
+            <div class="text-xs font-semibold text-gold-400 mb-2">الإجابة المختصرة</div>
+            <p id="res-short-answer" class="text-slate-200 leading-relaxed"></p>
           </div>
 
-          <!-- Country context -->
-          <div class="glass-card rounded-2xl border border-cyan-500/20 p-5">
-            <div class="text-xs font-semibold text-cyan-400 mb-2">🌍 أثر الدولة المختارة</div>
-            <p id="res-country-context" class="text-xs text-slate-300 leading-relaxed"></p>
-          </div>
-
-          <!-- Two column -->
-          <div class="grid sm:grid-cols-2 gap-4">
+          <div class="grid md:grid-cols-2 gap-4">
             <div class="glass-card rounded-2xl border border-white/10 p-5">
-              <div class="text-xs font-semibold text-blue-400 mb-2">📖 فهم الحالة</div>
-              <p id="res-case-understanding" class="text-xs text-slate-300 leading-relaxed"></p>
+              <div class="text-xs font-semibold text-slate-400 mb-2">سياق الدولة</div>
+              <p id="res-country-context" class="text-sm text-slate-300 leading-relaxed"></p>
             </div>
             <div class="glass-card rounded-2xl border border-white/10 p-5">
-              <div class="text-xs font-semibold text-purple-400 mb-2">🏷️ التصنيف القانوني</div>
-              <p id="res-legal-classification" class="text-xs text-slate-300 leading-relaxed"></p>
+              <div class="text-xs font-semibold text-slate-400 mb-2">التصنيف القانوني</div>
+              <p id="res-classification" class="text-sm text-white leading-relaxed"></p>
             </div>
           </div>
 
-          <!-- Criminal penalty estimate -->
-          <div id="criminal-penalty-card" class="hidden glass-card rounded-2xl border border-red-500/25 p-5 bg-red-500/5">
-            <div class="flex items-center gap-2 mb-4">
-              <div class="w-6 h-6 rounded-lg bg-red-500/20 flex items-center justify-center">⚠️</div>
-              <span class="text-sm font-semibold text-red-300">تقدير النطاق العقابي المحتمل</span>
+          <div class="glass-card rounded-2xl border border-white/10 p-5">
+            <div class="text-xs font-semibold text-slate-400 mb-2">فهم الحالة</div>
+            <p id="res-understanding" class="text-sm text-slate-300 leading-relaxed"></p>
+          </div>
+
+          <div id="criminal-result-card" class="hidden glass-card rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
+            <div class="text-xs font-semibold text-red-300 mb-3">تقدير النطاق العقابي المحتمل</div>
+            <div id="res-criminal-penalty" class="space-y-3 text-sm text-slate-300"></div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="glass-card rounded-2xl border border-white/10 p-5">
+              <div class="text-xs font-semibold text-red-300 mb-3">المخاطر الرئيسية</div>
+              <ul id="res-risks" class="space-y-2 text-sm text-slate-300"></ul>
             </div>
-            <div class="grid sm:grid-cols-2 gap-4 mb-4">
-              <div class="bg-white/5 rounded-xl p-3">
-                <div class="text-xs text-slate-500 mb-1">الفعل المنسوب</div>
-                <p id="res-alleged-crime" class="text-xs text-slate-200 leading-relaxed"></p>
-              </div>
-              <div class="bg-white/5 rounded-xl p-3">
-                <div class="text-xs text-slate-500 mb-1">النطاق العقابي المحتمل</div>
-                <p id="res-penalty-range" class="text-xs text-slate-200 leading-relaxed"></p>
-              </div>
-            </div>
-            <div class="grid sm:grid-cols-2 gap-4">
-              <div>
-                <div class="text-xs font-semibold text-red-300 mb-2">عوامل قد تشدد العقوبة</div>
-                <ul id="res-penalty-increase" class="space-y-2"></ul>
-              </div>
-              <div>
-                <div class="text-xs font-semibold text-green-300 mb-2">عوامل قد تخفف العقوبة</div>
-                <ul id="res-penalty-reduce" class="space-y-2"></ul>
-              </div>
-            </div>
-            <div class="mt-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
-              <p id="res-penalty-warning" class="text-xs text-slate-300 leading-relaxed"></p>
+            <div class="glass-card rounded-2xl border border-white/10 p-5">
+              <div class="text-xs font-semibold text-blue-300 mb-3">المستندات ذات العلاقة</div>
+              <ul id="res-documents" class="space-y-2 text-sm text-slate-300"></ul>
             </div>
           </div>
 
-          <!-- Risks & Docs -->
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div class="glass-card rounded-2xl border border-red-500/20 p-5">
-              <div class="text-xs font-semibold text-red-400 mb-3">⚠️ المخاطر الرئيسية</div>
-              <ul id="res-key-risks" class="space-y-2"></ul>
-            </div>
-            <div class="glass-card rounded-2xl border border-blue-500/20 p-5">
-              <div class="text-xs font-semibold text-blue-400 mb-3">📄 المستندات ذات الصلة</div>
-              <ul id="res-relevant-documents" class="space-y-2"></ul>
-            </div>
-          </div>
-
-          <!-- Similar cases -->
-          <div class="glass-card rounded-2xl border border-purple-500/20 p-5">
-            <div class="text-xs font-semibold text-purple-400 mb-3">🔍 حالات مشابهة</div>
+          <div class="glass-card rounded-2xl border border-white/10 p-5">
+            <div class="text-xs font-semibold text-purple-300 mb-3">حالات مشابهة</div>
             <div id="res-similar-cases" class="space-y-3"></div>
           </div>
 
-          <!-- Next steps -->
-          <div class="glass-card rounded-2xl border border-green-500/20 p-5">
-            <div class="text-xs font-semibold text-green-400 mb-3">✅ الخطوات المقترحة</div>
-            <ol id="res-next-steps" class="space-y-2"></ol>
+          <div class="glass-card rounded-2xl border border-white/10 p-5">
+            <div class="text-xs font-semibold text-green-300 mb-3">الخطوات المقترحة</div>
+            <ol id="res-next-steps" class="space-y-2 text-sm text-slate-300"></ol>
           </div>
 
-          <!-- Lawyer summary -->
           <div class="glass-card rounded-2xl border border-gold-400/20 p-5">
             <div class="flex items-center justify-between mb-3">
-              <div class="text-xs font-semibold text-gold-400">📝 ملخص جاهز للمحامي</div>
-              <button id="copy-summary-btn" class="text-xs text-slate-400 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-3 py-1 transition-all flex items-center gap-1.5">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                نسخ
-              </button>
+              <div class="text-xs font-semibold text-gold-400">ملخص جاهز للمحامي</div>
+              <button id="copy-summary-btn" class="text-xs text-slate-400 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-3 py-1 transition-all">نسخ</button>
             </div>
             <p id="res-lawyer-summary" class="text-sm text-slate-300 leading-relaxed bg-white/5 rounded-xl p-4"></p>
           </div>
 
-          <!-- Disclaimer -->
           <div class="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
             <p id="res-disclaimer" class="text-xs text-slate-400 leading-relaxed"></p>
           </div>
 
-          <!-- New analysis -->
-          <button id="new-analysis-btn" class="w-full py-3 rounded-xl border border-white/15 text-sm text-slate-300 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            بدء تحليل جديد
-          </button>
+          <button id="new-analysis-btn" class="w-full py-3 rounded-xl border border-white/15 text-sm text-slate-300 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all">بدء تحليل جديد</button>
         </div>
 
+        <div id="document-result-state" class="hidden space-y-4">
+          <div class="glass-card rounded-2xl border border-gold-400/20 p-5">
+            <div class="text-xs font-semibold text-gold-400 mb-2">تحليل المستند القانوني</div>
+            <p id="doc-summary" class="text-slate-200 leading-relaxed"></p>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="glass-card rounded-2xl border border-white/10 p-5"><div class="text-xs text-slate-400 mb-3">الأطراف</div><ul id="doc-parties" class="space-y-2 text-sm text-slate-300"></ul></div>
+            <div class="glass-card rounded-2xl border border-white/10 p-5"><div class="text-xs text-slate-400 mb-3">الالتزامات الرئيسية</div><ul id="doc-obligations" class="space-y-2 text-sm text-slate-300"></ul></div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="glass-card rounded-2xl border border-red-500/20 p-5"><div class="text-xs text-red-300 mb-3">البنود الخطرة</div><ul id="doc-risky" class="space-y-2 text-sm text-slate-300"></ul></div>
+            <div class="glass-card rounded-2xl border border-yellow-500/20 p-5"><div class="text-xs text-yellow-300 mb-3">الثغرات القانونية</div><ul id="doc-gaps" class="space-y-2 text-sm text-slate-300"></ul></div>
+          </div>
+          <div class="glass-card rounded-2xl border border-white/10 p-5"><div class="text-xs text-blue-300 mb-3">البنود الناقصة</div><ul id="doc-missing" class="space-y-2 text-sm text-slate-300"></ul></div>
+          <div class="glass-card rounded-2xl border border-green-500/20 p-5"><div class="text-xs text-green-300 mb-3">تعديلات مقترحة</div><ul id="doc-edits" class="space-y-2 text-sm text-slate-300"></ul></div>
+          <div class="glass-card rounded-2xl border border-gold-400/20 p-5">
+            <div class="text-xs text-gold-400 mb-2">مستوى الخطورة</div>
+            <p id="doc-risk-level" class="text-white font-semibold"></p>
+            <div class="text-xs text-gold-400 mt-4 mb-2">ملخص للمحامي</div>
+            <p id="doc-lawyer-summary" class="text-sm text-slate-300 leading-relaxed"></p>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
 </section>

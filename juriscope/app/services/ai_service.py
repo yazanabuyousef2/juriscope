@@ -49,18 +49,22 @@ def _safe_json_loads(text: str) -> Dict[str, Any]:
         raise ValueError("لم يصل رد من مزود الذكاء الاصطناعي.")
 
     cleaned = text.strip()
+
+    # Remove markdown fences like ```json ... ```
     cleaned = re.sub(r"^```(?:json)?", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(r"```$", "", cleaned).strip()
 
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        start = cleaned.find("{")
-        end = cleaned.rfind("}") + 1
-        if start >= 0 and end > start:
-            return json.loads(cleaned[start:end])
-        raise ValueError("لم يتمكن النظام من قراءة رد Gemini كـ JSON.")
+    # Extract JSON object if extra text exists
+    start = cleaned.find("{")
+    end = cleaned.rfind("}") + 1
 
+    if start >= 0 and end > start:
+        cleaned = cleaned[start:end]
+
+    try:
+        return json.loads(cleaned, strict=False)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"لم يتمكن النظام من قراءة رد Gemini كـ JSON صالح: {str(e)}")
 
 def _as_list(value: Any) -> List[str]:
     if isinstance(value, list):
@@ -214,9 +218,12 @@ async def analyze_legal_question(request: AnalyzeRequest) -> AnalyzeResponse:
     prompt = _build_prompt(request)
 
     response = client.models.generate_content(
-        model=MODEL,
-        contents=prompt,
-    )
+    model=MODEL,
+    contents=prompt,
+    config=types.GenerateContentConfig(
+        response_mime_type="application/json"
+    ),
+)
 
     raw_text = response.text or ""
     data = _safe_json_loads(raw_text)

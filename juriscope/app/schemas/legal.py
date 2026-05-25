@@ -18,6 +18,7 @@ class AnalyzeRequest(BaseModel):
     country: str = "الأردن"
     case_type: str = "أخرى"
     plan: str = "المجانية"
+    case_id: Optional[int] = None
     criminal_details: Optional[CriminalDetails] = None
 
 

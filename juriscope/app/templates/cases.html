@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}قضاياي – Mizan{% endblock %}
+{% block content %}
+<section class="py-12 px-4 min-h-screen">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-3xl font-bold">قضاياي</h1>
+        <p class="text-slate-400 mt-2">أنشئ قضايا واحفظ داخلها الأسئلة والملفات والملاحظات والمستجدات.</p>
+      </div>
+      <a href="/cases/new" class="px-5 py-3 rounded-xl bg-gold-400 text-navy-950 font-semibold hover:bg-gold-500 transition-all">إنشاء قضية جديدة</a>
+    </div>
+
+    <div class="grid sm:grid-cols-3 gap-4 mb-8">
+      <div class="glass-card rounded-2xl border border-white/10 p-5">القضايا: <span class="text-white font-bold">{{ usage.cases }}/{{ limits.cases }}</span></div>
+      <div class="glass-card rounded-2xl border border-white/10 p-5">التحليلات: <span class="text-white font-bold">{{ usage.analyses }}/{{ limits.analyses_per_month }}</span></div>
+      <div class="glass-card rounded-2xl border border-white/10 p-5">المستندات: <span class="text-white font-bold">{{ usage.documents }}/{{ limits.documents_per_month }}</span></div>
+    </div>
+
+    {% if cases %}
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {% for case in cases %}
+        <a href="/cases/{{ case.id }}" class="glass-card rounded-3xl border border-white/10 p-6 hover:border-gold-400/30 transition-all block">
+          <div class="flex items-start justify-between mb-4">
+            <div class="text-xs text-gold-400">#{{ case.id }}</div>
+            <div class="text-xs rounded-full bg-white/10 px-3 py-1 text-slate-300">{{ case.status }}</div>
+          </div>
+          <h2 class="text-xl font-bold mb-3">{{ case.title }}</h2>
+          <div class="space-y-2 text-sm text-slate-400">
+            <div>الدولة: {{ case.country }}</div>
+            <div>نوع القضية: {{ case.case_type }}</div>
+            {% if case.court_name %}<div>المحكمة: {{ case.court_name }}</div>{% endif %}
+            {% if case.case_number %}<div>رقم القضية: {{ case.case_number }}</div>{% endif %}
+          </div>
+          <div class="mt-5 text-xs text-slate-500">آخر تحديث: {{ case.updated_at }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="glass-card rounded-3xl border border-white/10 p-10 text-center">
+        <img src="/static/images/mizan-logo.png" class="w-20 h-20 object-contain mx-auto mb-4">
+        <h2 class="text-xl font-bold mb-2">لا توجد قضايا بعد</h2>
+        <p class="text-slate-400 mb-6">ابدأ بإنشاء قضية لحفظ كل الأسئلة والملفات والملاحظات في مكان واحد.</p>
+        <a href="/cases/new" class="inline-flex px-6 py-3 rounded-xl bg-gold-400 text-navy-950 font-semibold">إنشاء قضية</a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

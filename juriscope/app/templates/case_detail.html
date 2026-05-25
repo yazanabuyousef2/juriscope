@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ case.title }} – Mizan{% endblock %}
+{% block content %}
+<section class="py-12 px-4 min-h-screen">
+  <div class="max-w-7xl mx-auto">
+
+    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-8">
+      <div>
+        <div class="text-sm text-gold-400 mb-2">قضية #{{ case.id }}</div>
+        <h1 class="text-3xl font-bold">{{ case.title }}</h1>
+        <p class="text-slate-400 mt-2">{{ case.country }} · {{ case.case_type }} · {{ case.status }}</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/assistant" class="px-5 py-3 rounded-xl bg-gold-400 text-navy-950 font-semibold">اسأل داخل القضية</a>
+        <a href="/cases" class="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15">كل القضايا</a>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6">
+      <div class="space-y-6">
+        <div class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-semibold mb-4">بيانات القضية</h2>
+          <div class="space-y-3 text-sm text-slate-300">
+            <div>الدولة: {{ case.country }}</div>
+            <div>نوع القضية: {{ case.case_type }}</div>
+            {% if case.opponent_name %}<div>الخصم: {{ case.opponent_name }}</div>{% endif %}
+            {% if case.court_name %}<div>المحكمة: {{ case.court_name }}</div>{% endif %}
+            {% if case.case_number %}<div>رقم القضية: {{ case.case_number }}</div>{% endif %}
+            <div>تاريخ الإنشاء: {{ case.created_at }}</div>
+          </div>
+        </div>
+
+        <div id="notes" class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-semibold mb-4">ملاحظات خاصة</h2>
+          <form method="post" action="/cases/{{ case.id }}/notes" class="space-y-3 mb-5">
+            <textarea name="note" class="form-input min-h-[100px]" placeholder="ملاحظة خاصة للمحامي لاستخدامه الداخلي..."></textarea>
+            <button class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15">إضافة ملاحظة</button>
+          </form>
+          <div class="space-y-3">
+            {% for note in notes %}
+              <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-sm text-slate-300">
+                {{ note.note }}
+                <div class="text-[11px] text-slate-500 mt-2">{{ note.created_at }}</div>
+              </div>
+            {% else %}
+              <div class="text-sm text-slate-500">لا توجد ملاحظات بعد.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div id="updates" class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-semibold mb-4">مستجدات الجلسات</h2>
+          <form method="post" action="/cases/{{ case.id }}/updates" class="space-y-3 mb-5">
+            <textarea name="update_text" class="form-input min-h-[100px]" placeholder="أضف ما حدث في الجلسة أو أي مستجد جديد..."></textarea>
+            <button class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15">إضافة مستجد</button>
+          </form>
+          <div class="space-y-3">
+            {% for item in updates %}
+              <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-sm text-slate-300">
+                {{ item.update_text }}
+                <div class="text-[11px] text-slate-500 mt-2">{{ item.created_at }}</div>
+              </div>
+            {% else %}
+              <div class="text-sm text-slate-500">لا توجد مستجدات بعد.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-2 space-y-6">
+        <div class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-semibold mb-4">الأسئلة والتحليلات المحفوظة</h2>
+          <div class="space-y-4">
+            {% for msg in messages %}
+              <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="text-xs text-gold-400 mb-2">{{ msg.created_at }}</div>
+                <div class="font-semibold text-white mb-3">السؤال:</div>
+                <p class="text-sm text-slate-300 leading-relaxed mb-4">{{ msg.question }}</p>
+                <div class="font-semibold text-white mb-2">التحليل محفوظ داخل النظام.</div>
+                <p class="text-xs text-slate-500">يمكن لاحقًا إضافة صفحة عرض تفصيلية لكل تحليل.</p>
+              </div>
+            {% else %}
+              <div class="text-slate-500 text-sm">لم يتم حفظ أي تحليل داخل هذه القضية بعد. اختر هذه القضية من صفحة المساعد عند إرسال السؤال.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-semibold mb-4">المستندات المحللة</h2>
+          <div class="space-y-4">
+            {% for doc in documents %}
+              <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <div class="font-semibold text-white">{{ doc.filename }}</div>
+                    <div class="text-xs text-slate-500 mt-1">{{ doc.content_type }} · {{ doc.created_at }}</div>
+                  </div>
+                  <div class="text-xs text-gold-400">محلل</div>
+                </div>
+              </div>
+            {% else %}
+              <div class="text-slate-500 text-sm">لا توجد مستندات محفوظة بعد. ارفع مستندًا من صفحة المساعد واربطه بهذه القضية.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
