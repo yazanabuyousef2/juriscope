@@ -49,3 +49,18 @@ class AnalyzeResponse(BaseModel):
     lawyer_summary: str = ""
     criminal_penalty_estimate: CriminalPenaltyEstimate = Field(default_factory=CriminalPenaltyEstimate)
     disclaimer: str = ""
+
+
+class DocumentAnalysisResponse(BaseModel):
+    document_type: str = ""
+    country_context: str = ""
+    summary: str = ""
+    parties: List[str] = Field(default_factory=list)
+    main_obligations: List[str] = Field(default_factory=list)
+    risky_clauses: List[str] = Field(default_factory=list)
+    legal_gaps: List[str] = Field(default_factory=list)
+    missing_clauses: List[str] = Field(default_factory=list)
+    suggested_edits: List[str] = Field(default_factory=list)
+    risk_level: str = ""
+    lawyer_summary: str = ""
+    disclaimer: str = ""

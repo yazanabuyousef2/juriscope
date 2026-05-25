@@ -113,3 +113,17 @@ textarea:focus { box-shadow: 0 0 0 1px rgba(212, 168, 75, 0.4); }
   opacity: 1;
   transform: translateY(0);
 }
+
+/* Make native dropdown options readable on light OS menus */
+select option {
+  color: #020617 !important;
+  background: #ffffff !important;
+}
+select:focus option:checked,
+select option:checked {
+  color: #ffffff !important;
+  background: #2563eb !important;
+}
+input[type="file"]::file-selector-button {
+  cursor: pointer;
+}

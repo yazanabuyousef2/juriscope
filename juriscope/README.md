@@ -164,3 +164,27 @@ GEMINI_MODEL=gemini-2.5-flash
 ## تنبيه قانوني
 
 يوفر Juriscope معلومات وتحليلات قانونية مساعدة لأغراض معرفية وتنظيمية فقط، ولا يُعد استشارة قانونية نهائية ولا ينشئ علاقة محامٍ وموكل. يجب دائمًا مراجعة محامٍ مرخص قبل اتخاذ أي إجراء قانوني.
+
+## تحليل المستندات القانونية
+
+تمت إضافة endpoint جديد:
+
+```text
+POST /api/analyze-document
+```
+
+يدعم رفع الملفات التالية:
+
+- PDF، بما في ذلك PDF الممسوح Scanner PDF عبر Gemini document understanding
+- JPG / JPEG
+- PNG
+- WEBP
+
+الحد الحالي للملف: 10MB.
+
+يعتمد التحليل على Gemini، لذلك يجب إضافة المتغيرات التالية محليًا في `.env` أو في Render Environment Variables:
+
+```env
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash
+```

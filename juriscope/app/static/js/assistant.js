@@ -8,6 +8,14 @@ const LOADING_MESSAGES = [
   "جاري تجهيز ملخص مناسب للمحامي...",
 ];
 
+const DOCUMENT_LOADING_MESSAGES = [
+  "جاري رفع المستند وقراءته...",
+  "جاري تحليل الصفحات الممسوحة...",
+  "جاري استخراج البنود والالتزامات...",
+  "جاري البحث عن الثغرات القانونية...",
+  "جاري تجهيز ملخص مناسب للمحامي...",
+];
+
 const questionInput = document.getElementById("question-input");
 const charCount = document.getElementById("char-count");
 const analyzeBtn = document.getElementById("analyze-btn");
@@ -23,6 +31,11 @@ const countrySelect = document.getElementById("country-select");
 const caseTypeSelect = document.getElementById("case-type-select");
 const planSelect = document.getElementById("plan-select");
 const criminalPanel = document.getElementById("criminal-details-panel");
+
+const documentTypeSelect = document.getElementById("document-type-select");
+const documentFileInput = document.getElementById("document-file-input");
+const documentQuestionInput = document.getElementById("document-question-input");
+const analyzeDocumentBtn = document.getElementById("analyze-document-btn");
 
 const criminalFields = {
   alleged_crime: document.getElementById("alleged-crime-input"),
@@ -64,12 +77,12 @@ function updateCriminalPanel() {
 caseTypeSelect?.addEventListener("change", updateCriminalPanel);
 updateCriminalPanel();
 
-questionInput.addEventListener("input", () => {
+questionInput?.addEventListener("input", () => {
   charCount.textContent = `${questionInput.value.length} حرف`;
 });
 
 const urlQ = new URLSearchParams(window.location.search).get("q");
-if (urlQ) {
+if (urlQ && questionInput) {
   questionInput.value = urlQ;
   charCount.textContent = `${urlQ.length} حرف`;
 }
@@ -89,23 +102,23 @@ exampleBtns.forEach((btn) => {
 });
 
 function showState(state) {
-  emptyState.classList.add("hidden");
-  loadingState.classList.add("hidden");
-  resultState.classList.add("hidden");
+  emptyState?.classList.add("hidden");
+  loadingState?.classList.add("hidden");
+  resultState?.classList.add("hidden");
 
-  if (state === "empty") emptyState.classList.remove("hidden");
-  if (state === "loading") loadingState.classList.remove("hidden");
-  if (state === "result") resultState.classList.remove("hidden");
+  if (state === "empty") emptyState?.classList.remove("hidden");
+  if (state === "loading") loadingState?.classList.remove("hidden");
+  if (state === "result") resultState?.classList.remove("hidden");
 }
 
 let loadingInterval = null;
 
-function startLoadingMessages() {
+function startLoadingMessages(messages = LOADING_MESSAGES) {
   let i = 0;
-  loadingMessage.textContent = LOADING_MESSAGES[0];
+  loadingMessage.textContent = messages[0];
   loadingInterval = setInterval(() => {
-    i = (i + 1) % LOADING_MESSAGES.length;
-    loadingMessage.textContent = LOADING_MESSAGES[i];
+    i = (i + 1) % messages.length;
+    loadingMessage.textContent = messages[i];
   }, 1500);
 }
 
@@ -131,7 +144,7 @@ function renderList(elId, items, colorClass = "bg-slate-500") {
 
   items.forEach((item) => {
     const li = document.createElement("li");
-    li.className = "flex items-start gap-2 text-xs text-slate-300";
+    li.className = "flex items-start gap-2 text-xs text-slate-300 leading-relaxed";
     li.innerHTML = `<div class="w-1.5 h-1.5 rounded-full ${colorClass} mt-1.5 shrink-0"></div><span>${escapeHTML(String(item))}</span>`;
     el.appendChild(li);
   });
@@ -152,7 +165,7 @@ function renderOrderedList(elId, items) {
 
   items.forEach((item, idx) => {
     const li = document.createElement("li");
-    li.className = "flex items-start gap-3 text-xs text-slate-300";
+    li.className = "flex items-start gap-3 text-xs text-slate-300 leading-relaxed";
     li.innerHTML = `
       <span class="shrink-0 w-5 h-5 rounded-full bg-green-500/20 text-green-400 text-xs flex items-center justify-center font-bold">${idx + 1}</span>
       <span>${escapeHTML(String(item))}</span>`;
@@ -162,6 +175,7 @@ function renderOrderedList(elId, items) {
 
 function renderSimilarCases(cases) {
   const el = document.getElementById("res-similar-cases");
+  if (!el) return;
   el.innerHTML = "";
 
   if (!Array.isArray(cases) || cases.length === 0) {
@@ -202,7 +216,45 @@ function renderPenaltyEstimate(estimate) {
   renderList("res-penalty-reduce", estimate.factors_that_may_reduce_penalty, "bg-green-400");
 }
 
+function hideDocumentResult() {
+  const card = document.getElementById("document-result-card");
+  card?.classList.add("hidden");
+}
+
+function renderDocumentResult(data) {
+  const card = document.getElementById("document-result-card");
+  if (card) card.classList.remove("hidden");
+
+  document.getElementById("doc-res-type").textContent = data.document_type || "مستند قانوني";
+  document.getElementById("doc-res-risk-level").textContent = data.risk_level || "غير محدد";
+  document.getElementById("doc-res-summary").textContent = data.summary || "";
+
+  renderList("doc-res-parties", data.parties, "bg-slate-400");
+  renderList("doc-res-obligations", data.main_obligations, "bg-blue-400");
+  renderList("doc-res-risky", data.risky_clauses, "bg-red-400");
+  renderList("doc-res-gaps", data.legal_gaps, "bg-yellow-400");
+  renderList("doc-res-missing", data.missing_clauses, "bg-purple-400");
+  renderList("doc-res-edits", data.suggested_edits, "bg-green-400");
+
+  document.getElementById("res-short-answer").textContent = data.summary || "تم تحليل المستند.";
+  document.getElementById("res-country-context").textContent = data.country_context || "";
+  document.getElementById("res-case-understanding").textContent = (data.parties || []).join("، ") || "تمت قراءة المستند المرفق.";
+  document.getElementById("res-legal-classification").textContent = data.document_type || "تحليل مستند قانوني";
+  document.getElementById("res-lawyer-summary").textContent = data.lawyer_summary || "";
+  document.getElementById("res-disclaimer").textContent = data.disclaimer || "";
+
+  renderPenaltyEstimate(null);
+  renderList("res-key-risks", data.risky_clauses, "bg-red-400");
+  renderList("res-relevant-documents", data.missing_clauses, "bg-blue-400");
+  renderOrderedList("res-next-steps", data.suggested_edits);
+  renderSimilarCases([]);
+
+  showState("result");
+  resultState.classList.add("fade-in");
+}
+
 function renderResult(data) {
+  hideDocumentResult();
   document.getElementById("res-short-answer").textContent = data.short_answer || "";
   document.getElementById("res-country-context").textContent = data.country_context || "";
   document.getElementById("res-case-understanding").textContent = data.case_understanding || "";
@@ -253,7 +305,7 @@ async function analyzeQuestion() {
 
   analyzeBtn.disabled = true;
   showState("loading");
-  startLoadingMessages();
+  startLoadingMessages(LOADING_MESSAGES);
 
   try {
     const response = await fetch("/api/analyze", {
@@ -288,23 +340,80 @@ async function analyzeQuestion() {
   }
 }
 
-analyzeBtn.addEventListener("click", analyzeQuestion);
+async function analyzeDocument() {
+  const file = documentFileInput?.files?.[0];
+  if (!file) {
+    alert("يرجى اختيار ملف PDF أو صورة لتحليلها.");
+    return;
+  }
 
-questionInput.addEventListener("keydown", (e) => {
+  if (file.size > 10 * 1024 * 1024) {
+    alert("الملف كبير جدًا. الحد الحالي 10MB. يرجى رفع ملف أصغر أو نسخة مختصرة.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("country", countrySelect.value);
+  formData.append("document_type", documentTypeSelect.value);
+  formData.append("plan", planSelect.value);
+  formData.append("question", documentQuestionInput?.value.trim() || "");
+
+  analyzeDocumentBtn.disabled = true;
+  showState("loading");
+  startLoadingMessages(DOCUMENT_LOADING_MESSAGES);
+
+  try {
+    const response = await fetch("/api/analyze-document", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`;
+      try {
+        const err = await response.json();
+        if (err.detail) message = err.detail;
+      } catch (_) {}
+      throw new Error(message);
+    }
+
+    const data = await response.json();
+    stopLoadingMessages();
+    renderDocumentResult(data);
+  } catch (err) {
+    stopLoadingMessages();
+    showState("empty");
+
+    if (err instanceof TypeError) {
+      alert("حدث خطأ في الاتصال أثناء رفع المستند. يرجى المحاولة مرة أخرى.");
+    } else {
+      alert(`حدث خطأ أثناء تحليل المستند. ${err.message || "يرجى المحاولة مرة أخرى."}`);
+    }
+  } finally {
+    analyzeDocumentBtn.disabled = false;
+  }
+}
+
+analyzeBtn?.addEventListener("click", analyzeQuestion);
+analyzeDocumentBtn?.addEventListener("click", analyzeDocument);
+
+questionInput?.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
     analyzeQuestion();
   }
 });
 
-newAnalysisBtn.addEventListener("click", () => {
+newAnalysisBtn?.addEventListener("click", () => {
   questionInput.value = "";
   charCount.textContent = "0 حرف";
+  hideDocumentResult();
   showState("empty");
   questionInput.focus();
   resultState.classList.remove("fade-in");
 });
 
-copySummaryBtn.addEventListener("click", async () => {
+copySummaryBtn?.addEventListener("click", async () => {
   const text = document.getElementById("res-lawyer-summary").textContent;
   try {
     await navigator.clipboard.writeText(text);

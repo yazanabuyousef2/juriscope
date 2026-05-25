@@ -149,6 +149,54 @@
           </button>
         </div>
 
+        <!-- Document analysis -->
+        <div class="glass-card rounded-2xl p-5 border border-cyan-500/20 bg-cyan-500/5">
+          <div class="flex items-start gap-3 mb-4">
+            <div class="w-8 h-8 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-300">📎</div>
+            <div>
+              <h3 class="text-sm font-bold text-white">تحليل مستند قانوني</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">يدعم PDF الممسوح والصور. ارفع عقدًا أو مستندًا وسيقوم Juriscope بقراءة البنود وإظهار الثغرات.</p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-2">نوع المستند</label>
+              <select id="document-type-select" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400/50">
+                <option>عقد شراكة</option>
+                <option>عقد عمل</option>
+                <option>عقد إيجار</option>
+                <option>عقد بيع</option>
+                <option>اتفاقية خدمات</option>
+                <option>إنذار عدلي</option>
+                <option>مذكرة قانونية</option>
+                <option>مستند محكمة</option>
+                <option>شيك أو كمبيالة</option>
+                <option>مستند آخر</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-2">ارفع الملف</label>
+              <input id="document-file-input" type="file" accept="application/pdf,image/png,image/jpeg,image/webp"
+                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-slate-300 file:ml-3 file:rounded-lg file:border-0 file:bg-cyan-400 file:px-3 file:py-2 file:text-xs file:font-bold file:text-navy-950 hover:file:bg-cyan-300" />
+              <p class="text-[11px] text-slate-500 mt-2">الحد الحالي 10MB. يدعم PDF الممسوح Scanner PDF وصور JPG/PNG/WEBP.</p>
+            </div>
+
+            <textarea id="document-question-input" rows="3" placeholder="اكتب ما تريد التركيز عليه في المستند، مثل: هل يوجد خطر على الشريك؟ هل يوجد شرط جزائي غير عادل؟"
+              class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-cyan-400/50"></textarea>
+
+            <button id="analyze-document-btn" class="w-full py-3.5 rounded-xl bg-cyan-400 text-navy-950 font-bold text-sm hover:bg-cyan-300 transition-all shadow-lg shadow-cyan-400/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              تحليل المستند
+            </button>
+          </div>
+
+          <div class="mt-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
+            <p class="text-[11px] text-slate-400 leading-relaxed">لا ترفع مستندات لا تملك حق استخدامها. التحليل يساعد على اكتشاف المخاطر ولا يغني عن مراجعة محامٍ قبل التوقيع أو اتخاذ إجراء.</p>
+          </div>
+        </div>
+
         <!-- Example questions -->
         <div class="glass-card rounded-2xl p-5 border border-white/10">
           <div class="text-xs font-semibold text-slate-400 mb-3">أمثلة للأسئلة</div>
@@ -198,6 +246,57 @@
 
         <!-- Results -->
         <div id="result-state" class="hidden space-y-4">
+
+          <!-- Document analysis result -->
+          <div id="document-result-card" class="hidden glass-card rounded-2xl border border-cyan-500/25 p-5 bg-cyan-500/5">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-6 h-6 rounded-lg bg-cyan-500/20 flex items-center justify-center">📎</div>
+              <span class="text-sm font-semibold text-cyan-300">تحليل المستند القانوني</span>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+              <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                <div class="text-xs text-slate-500 mb-1">نوع المستند</div>
+                <p id="doc-res-type" class="text-xs text-slate-200 leading-relaxed"></p>
+              </div>
+              <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                <div class="text-xs text-slate-500 mb-1">مستوى الخطورة</div>
+                <p id="doc-res-risk-level" class="text-xs text-slate-200 leading-relaxed"></p>
+              </div>
+            </div>
+
+            <div class="bg-white/5 rounded-xl p-4 border border-white/5 mb-4">
+              <div class="text-xs font-semibold text-cyan-300 mb-2">ملخص المستند</div>
+              <p id="doc-res-summary" class="text-xs text-slate-300 leading-relaxed"></p>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div>
+                <div class="text-xs font-semibold text-slate-300 mb-2">الأطراف</div>
+                <ul id="doc-res-parties" class="space-y-2"></ul>
+              </div>
+              <div>
+                <div class="text-xs font-semibold text-blue-300 mb-2">الالتزامات الرئيسية</div>
+                <ul id="doc-res-obligations" class="space-y-2"></ul>
+              </div>
+              <div>
+                <div class="text-xs font-semibold text-red-300 mb-2">البنود الخطرة</div>
+                <ul id="doc-res-risky" class="space-y-2"></ul>
+              </div>
+              <div>
+                <div class="text-xs font-semibold text-yellow-300 mb-2">الثغرات القانونية</div>
+                <ul id="doc-res-gaps" class="space-y-2"></ul>
+              </div>
+              <div>
+                <div class="text-xs font-semibold text-purple-300 mb-2">البنود الناقصة</div>
+                <ul id="doc-res-missing" class="space-y-2"></ul>
+              </div>
+              <div>
+                <div class="text-xs font-semibold text-green-300 mb-2">تعديلات مقترحة</div>
+                <ul id="doc-res-edits" class="space-y-2"></ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Short answer -->
           <div class="glass-card rounded-2xl border border-gold-400/20 p-5">
