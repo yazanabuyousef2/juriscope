@@ -5,68 +5,48 @@
 <section class="py-24 px-4">
   <div class="max-w-7xl mx-auto">
 
-    <!-- Header -->
     <div class="text-center mb-16">
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-xs font-medium mb-5">✨ المميزات</div>
       <h1 class="text-4xl sm:text-5xl font-bold mb-5">مميزات <span class="text-gradient">Juriscope</span></h1>
-      <p class="text-slate-400 text-lg max-w-xl mx-auto">كل ما تحتاجه لفهم موقفك القانوني بوضوح قبل اتخاذ أي خطوة.</p>
+      <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+        كل ما تحتاجه لفهم موقفك القانوني قبل اتخاذ أي خطوة، مع تحليل يتأثر بالدولة المختارة ونوع القضية والباقة.
+      </p>
     </div>
 
-    <!-- Features grid -->
-    <div class="space-y-8">
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
       {% set features = [
-        ('📋', 'تصنيف قانوني فوري', 'text-blue-400', 'border-blue-500/20 bg-blue-500/5',
-         'يقوم Juriscope بتصنيف حالتك قانونيًا فور إدخالها، وتحديد المجال القانوني المعني بدقة سواء كان مدنيًا، تجاريًا، عماليًا، أو غير ذلك.',
-         ['تحديد نوع النزاع القانوني', 'تصنيف الحالة حسب مجال القانون', 'توضيح الإطار القانوني المنطبق']),
-        ('⚠️', 'تحليل المخاطر', 'text-red-400', 'border-red-500/20 bg-red-500/5',
-         'لا تفاجئك مخاطر لم تتوقعها. يحدد Juriscope المخاطر القانونية الرئيسية في حالتك ويشرح لك لماذا قد تؤثر على موقفك.',
-         ['قائمة بالمخاطر المحتملة', 'شرح لكل خطر وأثره', 'تنبيهات للمواعيد القانونية الحرجة']),
-        ('🔍', 'البحث عن حالات مشابهة', 'text-purple-400', 'border-purple-500/20 bg-purple-500/5',
-         'يبحث Juriscope في قاعدة بيانات الحالات القانونية والمبادئ القضائية ليقارن موقفك بحالات مشابهة، مع شرح أوجه التشابه والاختلاف.',
-         ['نسبة التشابه مع الحالات المرجعية', 'المبدأ القانوني الحاكم', 'شرح الفروقات المهمة']),
-        ('📄', 'قائمة المستندات المطلوبة', 'text-green-400', 'border-green-500/20 bg-green-500/5',
-         'يخبرك Juriscope بالوثائق التي تحتاجها لتقوية موقفك القانوني قبل لقاء المحامي أو رفع الدعوى.',
-         ['قائمة مخصصة حسب نوع الحالة', 'شرح لأهمية كل مستند', 'إرشادات لطريقة الحصول عليها']),
-        ('📝', 'ملخص جاهز للمحامي', 'text-gold-400', 'border-gold-400/20 bg-gold-400/5',
-         'لا تضيع وقتك في شرح حالتك من البداية. يُنتج Juriscope ملخصًا قانونيًا احترافيًا تنسخه وترسله لمحاميك مباشرةً.',
-         ['نص قانوني محكم الصياغة', 'يشمل جميع التفاصيل الجوهرية', 'قابل للنسخ والمشاركة فورًا']),
-        ('✅', 'خطوات عملية مقترحة', 'text-teal-400', 'border-teal-500/20 bg-teal-500/5',
-         'بعد التحليل تحصل على قائمة مرتبة بالخطوات العملية التي يجب اتخاذها، من جمع المستندات إلى التواصل مع محامٍ متخصص.',
-         ['خطوات مرتبة بالأولوية', 'إجراءات فورية وطويلة الأمد', 'توجيه لنوع المتخصص المناسب']),
+        ('🌍', 'اختيار الدولة', 'اختر الدولة ليقوم Juriscope بتكييف التحليل وفق النظام القانوني المختار مع التنبيه أن الدقة النهائية تتطلب الرجوع للنصوص الرسمية.'),
+        ('🏷️', 'تصنيف قانوني فوري', 'يحدد نوع القضية والتكييف الأولي: مدني، تجاري، عمالي، جنائي، عقود، شركات، أحوال شخصية أو غير ذلك.'),
+        ('⚠️', 'تحليل المخاطر', 'يعرض أهم المخاطر القانونية والعملية التي يجب الانتباه لها قبل التواصل مع الطرف الآخر أو اتخاذ إجراء.'),
+        ('⚖️', 'دعم القضايا الجنائية', 'يحلل القضايا الجنائية بحذر باستخدام عبارات مثل الفعل المنسوب وفي حال ثبوت الفعل دون اعتبار الشخص مذنبًا.'),
+        ('📉', 'نطاق العقوبة المحتمل', 'في القضايا الجنائية يعرض نطاقًا عامًا للعقوبة المحتملة والعوامل التي قد تشددها أو تخففها دون ضمان نتيجة قضائية.'),
+        ('📄', 'قائمة المستندات المطلوبة', 'يقترح المستندات والأدلة التي يحتاجها المستخدم أو المحامي لفهم الملف وتقييم الموقف.'),
+        ('🔍', 'حالات مشابهة', 'يعرض حالات مشابهة بصياغة عامة ومبادئ قانونية دون اختراع أسماء أحكام غير مؤكدة.'),
+        ('💼', 'باقات حسب مستوى التحليل', 'الباقة المجانية مختصرة، الأفراد أكثر تفصيلًا، الأعمال تركّز على المخاطر التجارية، والمحامون بصياغة احترافية.'),
+        ('🧠', 'قابل للتطوير بمصادر رسمية', 'يمكن لاحقًا ربط Juriscope بقواعد قوانين وأحكام رسمية لكل دولة لرفع الدقة والموثوقية.')
       ] %}
 
-      {% for feat in features %}
-      <div class="glass-card rounded-2xl border {{ feat[3] }} p-7">
-        <div class="grid md:grid-cols-3 gap-6 items-start">
-          <div class="md:col-span-1">
-            <div class="text-4xl mb-4">{{ feat[0] }}</div>
-            <h2 class="text-xl font-bold text-white mb-3 {{ feat[2] }}">{{ feat[1] }}</h2>
-            <p class="text-slate-400 text-sm leading-relaxed">{{ feat[4] }}</p>
-          </div>
-          <div class="md:col-span-2">
-            <div class="grid sm:grid-cols-3 gap-3">
-              {% for bullet in feat[5] %}
-              <div class="bg-white/5 rounded-xl p-4 border border-white/5">
-                <div class="w-6 h-6 rounded-lg {{ feat[3] }} border flex items-center justify-center mb-3">
-                  <span class="{{ feat[2] }} text-xs font-bold">{{ loop.index }}</span>
-                </div>
-                <p class="text-xs text-slate-300 leading-relaxed">{{ bullet }}</p>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-        </div>
+      {% for icon, title, desc in features %}
+      <div class="glass-card rounded-2xl p-6 border border-white/10 hover:border-gold-400/25 transition-all">
+        <div class="w-12 h-12 rounded-2xl bg-gold-400/10 border border-gold-400/20 flex items-center justify-center text-2xl mb-5">{{ icon }}</div>
+        <h3 class="text-lg font-bold mb-3">{{ title }}</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">{{ desc }}</p>
       </div>
       {% endfor %}
 
     </div>
 
-    <!-- CTA -->
+    <div class="mt-16 glass-card rounded-3xl p-8 border border-yellow-500/20 bg-yellow-500/5">
+      <h2 class="text-xl font-bold mb-3">تنبيه مهم حول الدقة القانونية</h2>
+      <p class="text-sm text-slate-400 leading-relaxed">
+        التحليل حسب الدولة يساعد على توجيه الإجابة، لكنه لا يغني عن ربط النظام بمصادر قانونية رسمية لكل دولة ولا عن مراجعة محامٍ مرخص، خصوصًا في القضايا الجنائية أو عالية المخاطر.
+      </p>
+    </div>
+
     <div class="text-center mt-16">
       <a href="/assistant" class="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gold-400 text-navy-950 font-bold hover:bg-gold-500 transition-all shadow-2xl shadow-gold-400/30">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        جرّب هذه المميزات الآن
+        جرّب المساعد الآن
       </a>
     </div>
 

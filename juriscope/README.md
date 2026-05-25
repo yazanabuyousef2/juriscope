@@ -2,123 +2,165 @@
 
 > افهم موقفك القانوني بوضوح — مدعوم بالذكاء الاصطناعي
 
+Juriscope هو تطبيق FastAPI عربي RTL يساعد المستخدم على كتابة سؤاله القانوني، اختيار الدولة، نوع القضية، والباقة، ثم الحصول على تحليل قانوني منظم باستخدام Gemini API.
+
 ---
 
-## 📋 متطلبات التشغيل
+## المميزات الحالية
+
+- اختيار الدولة: الأردن، السعودية، الإمارات، مصر، العراق، قطر، الكويت، البحرين، عُمان.
+- اختيار نوع القضية: مدني، تجاري، عقود، شركات، عمالي، إيجارات، أحوال شخصية، جنائي، شيكات ومطالبات مالية، ملكية فكرية، إداري، أخرى.
+- اختيار الباقة: المجانية، الأفراد، الأعمال، المحامون.
+- دعم القضايا الجنائية بحذر من خلال "تقدير النطاق العقابي المحتمل في حال ثبوت الفعل".
+- ملخص جاهز للمحامي.
+- واجهة عربية RTL.
+- جاهز للنشر على Render.
+
+---
+
+## متطلبات التشغيل
 
 - Python 3.9 أو أحدث
-- اتصال بالإنترنت (لتحميل Tailwind CSS و Google Fonts)
+- Gemini API Key من Google AI Studio
+- اتصال بالإنترنت
 
 ---
 
-## 🚀 تشغيل المشروع محلياً
+## ملف البيئة `.env`
+
+أنشئ ملفًا باسم `.env` بجانب `main.py` واكتب:
+
+```env
+GEMINI_API_KEY=ضع_مفتاح_Gemini_هنا
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+لا ترفع ملف `.env` إلى GitHub.
+
+---
+
+## تشغيل المشروع محليًا
 
 ### Windows
 
 ```powershell
-# 1. إنشاء البيئة الافتراضية
 python -m venv venv
-
-# 2. تفعيل البيئة الافتراضية
 .\venv\Scripts\Activate.ps1
-
-# إذا ظهر خطأ في التفعيل، شغّل هذا الأمر أولاً:
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-
-# 3. تثبيت المكتبات
 pip install -r requirements.txt
-
-# 4. تشغيل المشروع
 python main.py
+```
+
+إذا ظهر خطأ في تفعيل البيئة الافتراضية:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\venv\Scripts\Activate.ps1
 ```
 
 ### Mac / Linux
 
 ```bash
-# 1. إنشاء البيئة الافتراضية
 python3 -m venv venv
-
-# 2. تفعيل البيئة الافتراضية
 source venv/bin/activate
-
-# 3. تثبيت المكتبات
 pip install -r requirements.txt
-
-# 4. تشغيل المشروع
 python main.py
 ```
 
 ---
 
-## 🌐 فتح الموقع
+## فتح الموقع
 
-بعد التشغيل، افتح المتصفح واذهب إلى:
+بعد التشغيل افتح:
 
-```
+```text
 http://127.0.0.1:8000
 ```
 
+صفحة المساعد:
+
+```text
+http://127.0.0.1:8000/assistant
+```
+
 ---
 
-## 📁 هيكل المشروع
+## هيكل المشروع
 
-```
+```text
 juriscope/
-├── main.py                         # نقطة الدخول الرئيسية
-├── requirements.txt                # مكتبات Python
+├── main.py
+├── requirements.txt
 ├── README.md
-│
-└── app/
-    ├── routes/
-    │   ├── pages.py                # مسارات الصفحات (HTML)
-    │   └── api.py                  # مسارات API
-    │
-    ├── services/
-    │   └── ai_service.py           # منطق الذكاء الاصطناعي (ديمو)
-    │
-    ├── schemas/
-    │   └── legal.py                # نماذج Pydantic
-    │
-    ├── templates/
-    │   ├── base.html               # القالب الأساسي (RTL)
-    │   ├── index.html              # الصفحة الرئيسية
-    │   ├── assistant.html          # صفحة المساعد القانوني
-    │   ├── features.html           # صفحة المميزات
-    │   └── use_cases.html          # صفحة حالات الاستخدام
-    │
-    └── static/
-        ├── css/style.css           # أنماط CSS
-        └── js/assistant.js         # JavaScript للمساعد
+├── app/
+│   ├── routes/
+│   │   ├── pages.py
+│   │   └── api.py
+│   ├── schemas/
+│   │   └── legal.py
+│   ├── services/
+│   │   └── ai_service.py
+│   ├── templates/
+│   │   ├── base.html
+│   │   ├── index.html
+│   │   ├── assistant.html
+│   │   ├── features.html
+│   │   └── use_cases.html
+│   └── static/
+│       ├── css/style.css
+│       └── js/assistant.js
 ```
 
 ---
 
-## 🔌 ربط الذكاء الاصطناعي الحقيقي لاحقاً
+## النشر على Render
 
-افتح الملف `app/services/ai_service.py` واستبدل محتوى الدالة:
+إذا كان المشروع داخل مجلد داخلي اسمه `juriscope` داخل GitHub:
 
-```python
-async def analyze_legal_question(question: str) -> AnalyzeResponse:
+### الخيار الأول
+
+اترك Root Directory فاضيًا، واستخدم:
+
+```bash
+cd juriscope && pip install -r requirements.txt
 ```
 
-بكود OpenAI أو RAG حسب حاجتك. التعليمات موجودة داخل الملف.
+Start Command:
+
+```bash
+cd juriscope && uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+### الخيار الثاني
+
+ضع Root Directory:
+
+```text
+juriscope
+```
+
+Build Command:
+
+```bash
+pip install -r requirements.txt
+```
+
+Start Command:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+### Environment Variables في Render
+
+أضف:
+
+```env
+GEMINI_API_KEY=مفتاح_Gemini_الحقيقي
+GEMINI_MODEL=gemini-2.5-flash
+```
 
 ---
 
-## 🌍 نشر مجاني (Render.com)
+## تنبيه قانوني
 
-1. ارفع المشروع على GitHub
-2. اذهب إلى [render.com](https://render.com) وأنشئ حساباً مجانياً
-3. اختر "New Web Service" وربطه بـ GitHub repo
-4. اضبط:
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `python main.py`
-5. انتظر حتى يكتمل النشر
-
----
-
-## ⚠️ تنبيه قانوني
-
-يوفر Juriscope معلومات وتحليلات قانونية مساعدة لأغراض معرفية وتنظيمية فقط،
-ولا يُعد استشارة قانونية نهائية ولا ينشئ علاقة محامٍ وموكل.
-يجب دائمًا مراجعة محامٍ مرخص قبل اتخاذ أي إجراء قانوني.
+يوفر Juriscope معلومات وتحليلات قانونية مساعدة لأغراض معرفية وتنظيمية فقط، ولا يُعد استشارة قانونية نهائية ولا ينشئ علاقة محامٍ وموكل. يجب دائمًا مراجعة محامٍ مرخص قبل اتخاذ أي إجراء قانوني.

@@ -5,75 +5,76 @@
 <section class="py-24 px-4">
   <div class="max-w-7xl mx-auto">
 
-    <!-- Header -->
     <div class="text-center mb-16">
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-xs font-medium mb-5">💼 حالات الاستخدام</div>
       <h1 class="text-4xl sm:text-5xl font-bold mb-5">حالات استخدام <span class="text-gradient">Juriscope</span></h1>
-      <p class="text-slate-400 text-lg max-w-xl mx-auto">من النزاعات الشخصية إلى قضايا الأعمال، يساعدك Juriscope على فهم الصورة القانونية بوضوح.</p>
+      <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+        من النزاعات الشخصية إلى قضايا الأعمال والقضايا الجنائية، يساعدك Juriscope على فهم الصورة القانونية بوضوح وحذر.
+      </p>
     </div>
 
-    <!-- Use cases grid -->
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
       {% set cases = [
-        ('🤝', 'نزاعات الشراكة والأعمال', 'border-gold-400/25 hover:border-gold-400/50',
-         'خلافات بين الشركاء حول الحصص والقرارات التجارية والانسحاب وما يترتب عليه من التزامات.',
-         ['انسحاب شريك وأخذ العملاء', 'خلاف على توزيع الأرباح', 'إساءة استخدام صلاحيات الشريك', 'تأسيس منافس من قبل الشريك'],
-         'نزاع شراكة'),
-        ('📃', 'الإخلال بالعقود', 'border-blue-500/25 hover:border-blue-500/50',
-         'عندما لا ينفذ أحد الأطراف ما تعاقد عليه أو يتأخر في التنفيذ أو يرفضه بشكل كامل.',
-         ['عدم تسليم خدمة مدفوعة', 'الإخلال بالتزامات التوريد', 'رفض الدفع بعد الاستلام', 'انتهاء صلاحية العقد قبل التنفيذ'],
-         'إخلال بعقد'),
-        ('👔', 'قضايا العمل والموظفين', 'border-purple-500/25 hover:border-purple-500/50',
-         'النزاعات بين الموظف وصاحب العمل بشأن الفصل والرواتب والإجازات والتعويضات.',
-         ['فصل تعسفي دون إشعار', 'عدم دفع مستحقات نهاية الخدمة', 'خصم راتب بدون سبب مشروع', 'تغيير شروط العمل أحادي الجانب'],
-         'قضية عمالية'),
-        ('🏠', 'نزاعات المؤجر والمستأجر', 'border-teal-500/25 hover:border-teal-500/50',
-         'الخلافات المتعلقة بعقود الإيجار وحقوق الطرفين والإخلاء والصيانة والودائع.',
-         ['رفض إعادة التأمين بعد انتهاء العقد', 'التأخر في تسليم الصيانة', 'زيادة الإيجار بشكل مفاجئ', 'الإخلاء التعسفي قبل انتهاء العقد'],
-         'نزاع إيجار'),
-        ('💡', 'الملكية الفكرية', 'border-pink-500/25 hover:border-pink-500/50',
-         'حماية الأفكار والإبداعات التجارية والتقنية من الاستخدام غير المرخص والسرقة.',
-         ['استخدام تصميم أو علامة تجارية دون إذن', 'سرقة فكرة تجارية من شريك سابق', 'انتهاك براءة الاختراع', 'نسخ المحتوى الرقمي المحمي'],
-         'ملكية فكرية'),
-        ('💰', 'الديون وحقوق المستهلك', 'border-green-500/25 hover:border-green-500/50',
-         'المطالبة بالديون المستحقة أو الدفاع عن حقوق المستهلك في مواجهة الممارسات التجارية غير العادلة.',
-         ['استعادة ديون من عملاء أو شركاء', 'الشكاوى ضد البائعين المضللين', 'التعامل مع شركات التحصيل', 'مطالبات ضمان المنتج'],
-         'ديون ومطالبات'),
+        ('🤝', 'نزاعات الشراكة والأعمال', 'تجاري / شركات',
+         'خلافات بين الشركاء حول الحصص، الانسحاب، العملاء، البيانات، أو الإدارة.',
+         ['انسحاب شريك وأخذ العملاء', 'نزاع على الحصص', 'إساءة استخدام بيانات الشركة']),
+        ('📑', 'الإخلال بالعقود', 'عقود',
+         'تحليل أولي لحالات عدم تنفيذ الالتزامات أو التأخر في الدفع أو مخالفة بنود الاتفاق.',
+         ['عدم تنفيذ عقد', 'تأخر التسليم', 'مطالبة مالية بسبب إخلال']),
+        ('👷', 'قضايا العمل والموظفين', 'عمالي',
+         'فهم المخاطر والحقوق في إنهاء العمل، الأجور، الإنذارات، أو النزاعات مع صاحب العمل.',
+         ['إنهاء دون إشعار', 'مطالبة برواتب', 'نزاع حول عقد العمل']),
+        ('🏠', 'نزاعات المؤجر والمستأجر', 'إيجارات',
+         'تحليل النزاعات المتعلقة بالأجرة، الإخلاء، التأمينات، أو التزامات الصيانة.',
+         ['عدم دفع أجرة', 'إخلاء', 'استرداد تأمين']),
+        ('🛡️', 'القضايا الجنائية', 'جنائي',
+         'تحليل حذر للفعل المنسوب، المخاطر، الأدلة، والعقوبة المحتملة في حال ثبوت الفعل دون اعتبار الشخص مذنبًا.',
+         ['اتهام أولي', 'وجود سوابق', 'تقدير نطاق عقوبة محتمل']),
+        ('💳', 'الشيكات والمطالبات المالية', 'مطالبات مالية',
+         'فهم الموقف القانوني في الشيكات، الديون، الفواتير، والمطالبات التجارية أو الشخصية.',
+         ['شيك مرتجع', 'دين غير مدفوع', 'فاتورة متأخرة']),
+        ('👨‍👩‍👧', 'الأحوال الشخصية', 'أحوال شخصية',
+         'تنظيم الأسئلة المتعلقة بالنفقة، الحضانة، الزواج، الطلاق، أو الحقوق الأسرية بحسب الدولة.',
+         ['نفقة', 'حضانة', 'طلاق وحقوق مالية']),
+        ('💡', 'الملكية الفكرية', 'ملكية فكرية',
+         'تحليل أولي لمشاكل العلامات التجارية، المحتوى، التصاميم، أو استخدام الأعمال دون إذن.',
+         ['تقليد علامة', 'سرقة تصميم', 'استخدام محتوى بدون إذن']),
+        ('🏛️', 'القضايا الإدارية', 'إداري',
+         'مساعدة أولية في فهم النزاعات مع الجهات الإدارية أو القرارات الحكومية القابلة للطعن.',
+         ['قرار إداري', 'مخالفة تنظيمية', 'اعتراض أو تظلم'])
       ] %}
 
-      {% for case in cases %}
-      <div class="glass-card rounded-2xl border {{ case[2] }} p-6 transition-all group">
-        <div class="text-3xl mb-4">{{ case[0] }}</div>
-        <h3 class="text-lg font-bold text-white mb-3 group-hover:text-gold-400 transition-colors">{{ case[1] }}</h3>
-        <p class="text-slate-400 text-sm leading-relaxed mb-5">{{ case[3] }}</p>
-
-        <div class="space-y-2 mb-6">
-          <div class="text-xs font-semibold text-slate-500 mb-2">حالات شائعة:</div>
-          {% for scenario in case[4] %}
-          <div class="flex items-start gap-2 text-xs text-slate-300">
-            <div class="w-1 h-1 rounded-full bg-slate-500 mt-1.5 shrink-0"></div>
-            {{ scenario }}
+      {% for icon, title, category, desc, examples in cases %}
+      <div class="glass-card rounded-2xl p-6 border border-white/10 hover:border-gold-400/30 transition-all">
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-2xl bg-gold-400/10 border border-gold-400/20 flex items-center justify-center text-2xl">{{ icon }}</div>
+          <span class="text-[11px] px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-400">{{ category }}</span>
+        </div>
+        <h3 class="text-lg font-bold mb-3">{{ title }}</h3>
+        <p class="text-sm text-slate-400 leading-relaxed mb-5">{{ desc }}</p>
+        <div class="space-y-2 mb-5">
+          {% for ex in examples %}
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-gold-400"></span>
+            {{ ex }}
           </div>
           {% endfor %}
         </div>
-
-        <a href="/assistant?q={{ case[5] }}" class="block w-full py-2.5 rounded-xl border border-white/15 text-center text-xs font-semibold text-slate-300 hover:text-navy-950 hover:bg-gold-400 hover:border-gold-400 transition-all">
-          جرّب هذه الحالة
+        <a href="/assistant?q={{ examples[0] }}" class="inline-flex items-center gap-2 text-sm text-gold-400 hover:text-gold-300 transition-all">
+          جرّب هذه الحالة ←
         </a>
       </div>
       {% endfor %}
 
     </div>
 
-    <!-- CTA Banner -->
     <div class="mt-16 glass-card rounded-3xl p-10 border border-white/10 relative overflow-hidden text-center">
       <div class="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-gold-400/10"></div>
       <div class="relative">
         <h2 class="text-2xl font-bold mb-3">حالتك غير موجودة في القائمة؟</h2>
-        <p class="text-slate-400 mb-6 text-sm">لا مشكلة. اشرح حالتك بكلماتك الخاصة وسيتولى Juriscope التحليل.</p>
+        <p class="text-slate-400 mb-6 text-sm">اختر الدولة ونوع القضية واشرح حالتك بكلماتك الخاصة وسيتولى Juriscope تنظيم التحليل.</p>
         <a href="/assistant" class="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gold-400 text-navy-950 font-bold hover:bg-gold-500 transition-all shadow-xl shadow-gold-400/25">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
           اكتب حالتك الآن
         </a>
       </div>

@@ -3,22 +3,128 @@
 
 {% block content %}
 <section class="min-h-screen py-12 px-4">
-  <div class="max-w-5xl mx-auto">
+  <div class="max-w-6xl mx-auto">
 
     <!-- Header -->
     <div class="text-center mb-10">
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-xs font-medium mb-4">
         <div class="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse"></div>
-        مساعد قانوني ذكي
+        مساعد قانوني ذكي حسب الدولة ونوع القضية
       </div>
       <h1 class="text-3xl sm:text-4xl font-bold mb-3">صف حالتك القانونية</h1>
-      <p class="text-slate-400 max-w-lg mx-auto">احصل على تحليل قانوني منظم خلال ثوانٍ. لا حاجة للتسجيل.</p>
+      <p class="text-slate-400 max-w-2xl mx-auto">
+        اختر الدولة ونوع القضية والباقة، ثم اكتب سؤالك لتحصل على تحليل منظم يتكيّف مع النظام القانوني المختار.
+      </p>
     </div>
 
     <div class="grid lg:grid-cols-5 gap-6">
 
       <!-- Input panel -->
       <div class="lg:col-span-2 space-y-4">
+
+        <!-- Jurisdiction and plan -->
+        <div class="glass-card rounded-2xl p-5 border border-white/10">
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-2">اختر الدولة</label>
+              <select id="country-select" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-gold-400/50">
+                <option>الأردن</option>
+                <option>السعودية</option>
+                <option>الإمارات</option>
+                <option>مصر</option>
+                <option>العراق</option>
+                <option>قطر</option>
+                <option>الكويت</option>
+                <option>البحرين</option>
+                <option>عُمان</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-2">نوع القضية</label>
+              <select id="case-type-select" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-gold-400/50">
+                <option>مدني</option>
+                <option>تجاري</option>
+                <option>عقود</option>
+                <option>شركات</option>
+                <option>عمالي</option>
+                <option>إيجارات</option>
+                <option>أحوال شخصية</option>
+                <option>جنائي</option>
+                <option>شيكات ومطالبات مالية</option>
+                <option>ملكية فكرية</option>
+                <option>إداري</option>
+                <option>أخرى</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-xs font-semibold text-slate-300 mb-2">الباقة</label>
+            <select id="plan-select" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-gold-400/50">
+              <option value="المجانية">المجانية — تحليل قانوني أساسي مع خطوات أولية</option>
+              <option value="الأفراد">الأفراد — تحليل أعمق ومستندات وملخص للمحامي</option>
+              <option value="الأعمال">الأعمال — قضايا الشركات والعقود والمخاطر التجارية</option>
+              <option value="المحامون">المحامون — صياغة احترافية وتحليل نقاط القوة والضعف</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Criminal details -->
+        <div id="criminal-details-panel" class="hidden glass-card rounded-2xl p-5 border border-red-500/20 bg-red-500/5">
+          <div class="flex items-start gap-2 mb-4">
+            <div class="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center text-red-300">!</div>
+            <div>
+              <h3 class="text-sm font-bold text-white">تفاصيل إضافية للقضية الجنائية</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">هذه البيانات تساعد على تقدير المخاطر والنطاق العقابي المحتمل دون اعتبار الشخص مذنبًا.</p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <input id="alleged-crime-input" type="text" placeholder="نوع الجرم أو الفعل المنسوب"
+              class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-400/50" />
+
+            <div class="grid grid-cols-2 gap-3">
+              <select id="has-prior-record-select" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-red-400/50">
+                <option>هل توجد سوابق؟</option>
+                <option>لا</option>
+                <option>نعم</option>
+                <option>غير معروف</option>
+              </select>
+              <input id="prior-count-input" type="text" placeholder="عدد السوابق إن وجدت"
+                class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-red-400/50" />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <select id="confession-select" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-red-400/50">
+                <option>هل يوجد اعتراف؟</option>
+                <option>نعم</option>
+                <option>لا</option>
+                <option>غير معروف</option>
+              </select>
+              <select id="witnesses-select" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-red-400/50">
+                <option>هل يوجد شهود؟</option>
+                <option>نعم</option>
+                <option>لا</option>
+                <option>غير معروف</option>
+              </select>
+              <select id="harm-select" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-red-400/50">
+                <option>هل يوجد ضرر؟</option>
+                <option>ضرر مادي</option>
+                <option>ضرر جسدي</option>
+                <option>ضرر مادي وجسدي</option>
+                <option>لا</option>
+                <option>غير معروف</option>
+              </select>
+            </div>
+
+            <textarea id="mitigating-factors-input" rows="2" placeholder="ظروف مخففة محتملة مثل الصلح، التعويض، صغر السن، عدم وجود سوابق..."
+              class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-red-400/50"></textarea>
+
+            <textarea id="aggravating-factors-input" rows="2" placeholder="ظروف مشددة محتملة مثل تكرار الفعل، وجود سلاح، ضرر جسيم، استغلال منصب..."
+              class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-red-400/50"></textarea>
+          </div>
+        </div>
 
         <!-- Question textarea -->
         <div class="glass-card rounded-2xl p-5 border border-white/10">
@@ -54,7 +160,7 @@
               وقّعت عقدًا لكن الطرف الآخر لم ينفذ التزاماته منذ 3 أشهر.
             </button>
             <button class="example-btn w-full text-right text-xs text-slate-400 hover:text-white bg-white/3 hover:bg-white/8 border border-white/5 hover:border-white/15 rounded-lg p-3 transition-all leading-relaxed">
-              تم إنهاء عملي دون إشعار بعد 5 سنوات، هل لدي مطالبة قانونية؟
+              تم اتهامي بجريمة ولم يصدر أي حكم بعد، ما المخاطر القانونية المحتملة؟
             </button>
           </div>
         </div>
@@ -63,7 +169,7 @@
         <div class="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
           <div class="flex items-start gap-2">
             <svg class="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            <p class="text-xs text-slate-400 leading-relaxed">للأغراض المعرفية فقط. راجع محاميًا مرخصًا دائمًا قبل أي إجراء قانوني.</p>
+            <p class="text-xs text-slate-400 leading-relaxed">للأغراض المعرفية فقط. لا يُعد التحليل حكمًا نهائيًا أو استشارة قانونية. راجع محاميًا مرخصًا دائمًا قبل أي إجراء.</p>
           </div>
         </div>
       </div>
@@ -75,7 +181,7 @@
         <div id="empty-state" class="glass-card rounded-2xl border border-white/10 p-12 text-center h-full flex flex-col items-center justify-center min-h-80">
           <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-5 text-3xl">⚖️</div>
           <h3 class="text-lg font-semibold text-white mb-2">سيظهر التحليل هنا</h3>
-          <p class="text-slate-400 text-sm leading-relaxed max-w-xs">اكتب سؤالك القانوني ثم اضغط على <span class="text-gold-400">تحليل الحالة</span> للحصول على إجابة منظمة.</p>
+          <p class="text-slate-400 text-sm leading-relaxed max-w-xs">اختر الدولة ونوع القضية، ثم اكتب سؤالك واضغط على <span class="text-gold-400">تحليل الحالة</span>.</p>
         </div>
 
         <!-- Loading state -->
@@ -102,6 +208,12 @@
             <p id="res-short-answer" class="text-sm text-slate-200 leading-relaxed"></p>
           </div>
 
+          <!-- Country context -->
+          <div class="glass-card rounded-2xl border border-cyan-500/20 p-5">
+            <div class="text-xs font-semibold text-cyan-400 mb-2">🌍 أثر الدولة المختارة</div>
+            <p id="res-country-context" class="text-xs text-slate-300 leading-relaxed"></p>
+          </div>
+
           <!-- Two column -->
           <div class="grid sm:grid-cols-2 gap-4">
             <div class="glass-card rounded-2xl border border-white/10 p-5">
@@ -111,6 +223,37 @@
             <div class="glass-card rounded-2xl border border-white/10 p-5">
               <div class="text-xs font-semibold text-purple-400 mb-2">🏷️ التصنيف القانوني</div>
               <p id="res-legal-classification" class="text-xs text-slate-300 leading-relaxed"></p>
+            </div>
+          </div>
+
+          <!-- Criminal penalty estimate -->
+          <div id="criminal-penalty-card" class="hidden glass-card rounded-2xl border border-red-500/25 p-5 bg-red-500/5">
+            <div class="flex items-center gap-2 mb-4">
+              <div class="w-6 h-6 rounded-lg bg-red-500/20 flex items-center justify-center">⚠️</div>
+              <span class="text-sm font-semibold text-red-300">تقدير النطاق العقابي المحتمل</span>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4 mb-4">
+              <div class="bg-white/5 rounded-xl p-3">
+                <div class="text-xs text-slate-500 mb-1">الفعل المنسوب</div>
+                <p id="res-alleged-crime" class="text-xs text-slate-200 leading-relaxed"></p>
+              </div>
+              <div class="bg-white/5 rounded-xl p-3">
+                <div class="text-xs text-slate-500 mb-1">النطاق العقابي المحتمل</div>
+                <p id="res-penalty-range" class="text-xs text-slate-200 leading-relaxed"></p>
+              </div>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div>
+                <div class="text-xs font-semibold text-red-300 mb-2">عوامل قد تشدد العقوبة</div>
+                <ul id="res-penalty-increase" class="space-y-2"></ul>
+              </div>
+              <div>
+                <div class="text-xs font-semibold text-green-300 mb-2">عوامل قد تخفف العقوبة</div>
+                <ul id="res-penalty-reduce" class="space-y-2"></ul>
+              </div>
+            </div>
+            <div class="mt-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
+              <p id="res-penalty-warning" class="text-xs text-slate-300 leading-relaxed"></p>
             </div>
           </div>
 
