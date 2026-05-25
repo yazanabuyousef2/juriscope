@@ -21,7 +21,7 @@ load_dotenv()
 MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 DEFAULT_DISCLAIMER = (
-    "يوفر Juriscope معلومات وتحليلات قانونية مساعدة لأغراض معرفية وتنظيمية فقط، "
+    "يوفر Mizan معلومات وتحليلات قانونية مساعدة لأغراض معرفية وتنظيمية فقط، "
     "ولا يُعد استشارة قانونية نهائية ولا ينشئ علاقة محامٍ وموكل. يجب دائمًا مراجعة "
     "محامٍ مرخص قبل اتخاذ أي إجراء قانوني، وخصوصًا قبل توقيع العقود أو تقديم الشكاوى أو رفع الدعاوى."
 )
@@ -104,7 +104,7 @@ def _build_prompt(request: AnalyzeRequest) -> str:
     is_criminal = request.case_type == "جنائي"
 
     return f"""
-أنت Juriscope، مساعد قانوني ذكي باللغة العربية.
+أنت Mizan، مساعد قانوني ذكي باللغة العربية.
 
 المستخدم اختار:
 - الدولة: {request.country}
@@ -225,7 +225,7 @@ async def analyze_legal_question(request: AnalyzeRequest) -> AnalyzeResponse:
 
 def _document_prompt(country: str, document_type: str, plan: str, question: str, filename: str) -> str:
     return f"""
-أنت Juriscope، مساعد قانوني ذكي متخصص في تحليل المستندات القانونية باللغة العربية.
+أنت Mizan، مساعد قانوني ذكي متخصص في تحليل المستندات القانونية باللغة العربية.
 
 المستخدم رفع مستندًا قانونيًا لتحليله.
 - الدولة المختارة: {country}

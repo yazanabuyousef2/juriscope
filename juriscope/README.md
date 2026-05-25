@@ -1,8 +1,8 @@
-# Juriscope – مساعد قانوني ذكي
+# Mizan – مساعد قانوني ذكي
 
 > افهم موقفك القانوني بوضوح — مدعوم بالذكاء الاصطناعي
 
-Juriscope هو تطبيق FastAPI عربي RTL يساعد المستخدم على كتابة سؤاله القانوني، اختيار الدولة، نوع القضية، والباقة، ثم الحصول على تحليل قانوني منظم باستخدام Gemini API.
+Mizan هو تطبيق FastAPI عربي RTL يساعد المستخدم على كتابة سؤاله القانوني، اختيار الدولة، نوع القضية، والباقة، ثم الحصول على تحليل قانوني منظم باستخدام Gemini API.
 
 ---
 
@@ -87,7 +87,7 @@ http://127.0.0.1:8000/assistant
 ## هيكل المشروع
 
 ```text
-juriscope/
+Mizan/
 ├── main.py
 ├── requirements.txt
 ├── README.md
@@ -114,20 +114,20 @@ juriscope/
 
 ## النشر على Render
 
-إذا كان المشروع داخل مجلد داخلي اسمه `juriscope` داخل GitHub:
+إذا كان المشروع داخل مجلد داخلي اسمه `Mizan` داخل GitHub:
 
 ### الخيار الأول
 
 اترك Root Directory فاضيًا، واستخدم:
 
 ```bash
-cd juriscope && pip install -r requirements.txt
+cd Mizan && pip install -r requirements.txt
 ```
 
 Start Command:
 
 ```bash
-cd juriscope && uvicorn main:app --host 0.0.0.0 --port $PORT
+cd Mizan && uvicorn main:app --host 0.0.0.0 --port $PORT
 ```
 
 ### الخيار الثاني
@@ -135,7 +135,7 @@ cd juriscope && uvicorn main:app --host 0.0.0.0 --port $PORT
 ضع Root Directory:
 
 ```text
-juriscope
+Mizan
 ```
 
 Build Command:
@@ -163,7 +163,7 @@ GEMINI_MODEL=gemini-2.5-flash
 
 ## تنبيه قانوني
 
-يوفر Juriscope معلومات وتحليلات قانونية مساعدة لأغراض معرفية وتنظيمية فقط، ولا يُعد استشارة قانونية نهائية ولا ينشئ علاقة محامٍ وموكل. يجب دائمًا مراجعة محامٍ مرخص قبل اتخاذ أي إجراء قانوني.
+يوفر Mizan معلومات وتحليلات قانونية مساعدة لأغراض معرفية وتنظيمية فقط، ولا يُعد استشارة قانونية نهائية ولا ينشئ علاقة محامٍ وموكل. يجب دائمًا مراجعة محامٍ مرخص قبل اتخاذ أي إجراء قانوني.
 
 ## تحليل المستندات القانونية
 

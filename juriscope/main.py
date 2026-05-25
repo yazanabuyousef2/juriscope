@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from app.routes.pages import router as pages_router
 from app.routes.api import router as api_router
 
-app = FastAPI(title="Juriscope", description="AI Legal Assistant")
+app = FastAPI(title="Mizan", description="AI Legal Assistant")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
