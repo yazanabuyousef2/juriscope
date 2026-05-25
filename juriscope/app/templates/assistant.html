@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}المساعد القانوني – Juriscope{% endblock %}
+
+{% block content %}
+<section class="min-h-screen py-12 px-4">
+  <div class="max-w-5xl mx-auto">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-xs font-medium mb-4">
+        <div class="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse"></div>
+        مساعد قانوني ذكي
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-bold mb-3">صف حالتك القانونية</h1>
+      <p class="text-slate-400 max-w-lg mx-auto">احصل على تحليل قانوني منظم خلال ثوانٍ. لا حاجة للتسجيل.</p>
+    </div>
+
+    <div class="grid lg:grid-cols-5 gap-6">
+
+      <!-- Input panel -->
+      <div class="lg:col-span-2 space-y-4">
+
+        <!-- Question textarea -->
+        <div class="glass-card rounded-2xl p-5 border border-white/10">
+          <label class="block text-sm font-semibold text-white mb-3">سؤالك القانوني</label>
+          <textarea
+            id="question-input"
+            rows="6"
+            placeholder="اكتب حالتك القانونية بلغة بسيطة. مثال: لدي شريك في الشركة يريد الانسحاب وأخذ العملاء معه، ما هو موقفي القانوني؟"
+            class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-gold-400/50 focus:bg-white/8 transition-all leading-relaxed"
+          ></textarea>
+          <div class="flex items-center justify-between mt-2">
+            <span id="char-count" class="text-xs text-slate-500">0 حرف</span>
+            <span class="text-xs text-slate-600">الحد الأدنى: ١٠ أحرف</span>
+          </div>
+
+          <button
+            id="analyze-btn"
+            class="mt-4 w-full py-3.5 rounded-xl bg-gold-400 text-navy-950 font-bold text-sm hover:bg-gold-500 transition-all shadow-lg shadow-gold-400/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            تحليل الحالة
+          </button>
+        </div>
+
+        <!-- Example questions -->
+        <div class="glass-card rounded-2xl p-5 border border-white/10">
+          <div class="text-xs font-semibold text-slate-400 mb-3">أمثلة للأسئلة</div>
+          <div class="space-y-2">
+            <button class="example-btn w-full text-right text-xs text-slate-400 hover:text-white bg-white/3 hover:bg-white/8 border border-white/5 hover:border-white/15 rounded-lg p-3 transition-all leading-relaxed">
+              لدي شريك في الشركة يريد الانسحاب وأخذ العملاء معه، ماذا يمكنني أن أفعل؟
+            </button>
+            <button class="example-btn w-full text-right text-xs text-slate-400 hover:text-white bg-white/3 hover:bg-white/8 border border-white/5 hover:border-white/15 rounded-lg p-3 transition-all leading-relaxed">
+              وقّعت عقدًا لكن الطرف الآخر لم ينفذ التزاماته منذ 3 أشهر.
+            </button>
+            <button class="example-btn w-full text-right text-xs text-slate-400 hover:text-white bg-white/3 hover:bg-white/8 border border-white/5 hover:border-white/15 rounded-lg p-3 transition-all leading-relaxed">
+              تم إنهاء عملي دون إشعار بعد 5 سنوات، هل لدي مطالبة قانونية؟
+            </button>
+          </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
+          <div class="flex items-start gap-2">
+            <svg class="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <p class="text-xs text-slate-400 leading-relaxed">للأغراض المعرفية فقط. راجع محاميًا مرخصًا دائمًا قبل أي إجراء قانوني.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result panel -->
+      <div class="lg:col-span-3">
+
+        <!-- Empty state -->
+        <div id="empty-state" class="glass-card rounded-2xl border border-white/10 p-12 text-center h-full flex flex-col items-center justify-center min-h-80">
+          <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-5 text-3xl">⚖️</div>
+          <h3 class="text-lg font-semibold text-white mb-2">سيظهر التحليل هنا</h3>
+          <p class="text-slate-400 text-sm leading-relaxed max-w-xs">اكتب سؤالك القانوني ثم اضغط على <span class="text-gold-400">تحليل الحالة</span> للحصول على إجابة منظمة.</p>
+        </div>
+
+        <!-- Loading state -->
+        <div id="loading-state" class="glass-card rounded-2xl border border-white/10 p-12 text-center hidden min-h-80 flex flex-col items-center justify-center">
+          <div class="relative w-16 h-16 mb-6">
+            <div class="absolute inset-0 rounded-full border-2 border-gold-400/20"></div>
+            <div class="absolute inset-0 rounded-full border-t-2 border-gold-400 animate-spin"></div>
+            <div class="absolute inset-3 rounded-full bg-gold-400/10 flex items-center justify-center">
+              <svg class="w-5 h-5 text-gold-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+            </div>
+          </div>
+          <p id="loading-message" class="text-slate-300 text-sm">جاري تحليل حالتك القانونية...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="result-state" class="hidden space-y-4">
+
+          <!-- Short answer -->
+          <div class="glass-card rounded-2xl border border-gold-400/20 p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-6 h-6 rounded-lg bg-gold-400/20 flex items-center justify-center">⚡</div>
+              <span class="text-sm font-semibold text-gold-400">الإجابة المختصرة</span>
+            </div>
+            <p id="res-short-answer" class="text-sm text-slate-200 leading-relaxed"></p>
+          </div>
+
+          <!-- Two column -->
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="glass-card rounded-2xl border border-white/10 p-5">
+              <div class="text-xs font-semibold text-blue-400 mb-2">📖 فهم الحالة</div>
+              <p id="res-case-understanding" class="text-xs text-slate-300 leading-relaxed"></p>
+            </div>
+            <div class="glass-card rounded-2xl border border-white/10 p-5">
+              <div class="text-xs font-semibold text-purple-400 mb-2">🏷️ التصنيف القانوني</div>
+              <p id="res-legal-classification" class="text-xs text-slate-300 leading-relaxed"></p>
+            </div>
+          </div>
+
+          <!-- Risks & Docs -->
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="glass-card rounded-2xl border border-red-500/20 p-5">
+              <div class="text-xs font-semibold text-red-400 mb-3">⚠️ المخاطر الرئيسية</div>
+              <ul id="res-key-risks" class="space-y-2"></ul>
+            </div>
+            <div class="glass-card rounded-2xl border border-blue-500/20 p-5">
+              <div class="text-xs font-semibold text-blue-400 mb-3">📄 المستندات ذات الصلة</div>
+              <ul id="res-relevant-documents" class="space-y-2"></ul>
+            </div>
+          </div>
+
+          <!-- Similar cases -->
+          <div class="glass-card rounded-2xl border border-purple-500/20 p-5">
+            <div class="text-xs font-semibold text-purple-400 mb-3">🔍 حالات مشابهة</div>
+            <div id="res-similar-cases" class="space-y-3"></div>
+          </div>
+
+          <!-- Next steps -->
+          <div class="glass-card rounded-2xl border border-green-500/20 p-5">
+            <div class="text-xs font-semibold text-green-400 mb-3">✅ الخطوات المقترحة</div>
+            <ol id="res-next-steps" class="space-y-2"></ol>
+          </div>
+
+          <!-- Lawyer summary -->
+          <div class="glass-card rounded-2xl border border-gold-400/20 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-semibold text-gold-400">📝 ملخص جاهز للمحامي</div>
+              <button id="copy-summary-btn" class="text-xs text-slate-400 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-3 py-1 transition-all flex items-center gap-1.5">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                نسخ
+              </button>
+            </div>
+            <p id="res-lawyer-summary" class="text-sm text-slate-300 leading-relaxed bg-white/5 rounded-xl p-4"></p>
+          </div>
+
+          <!-- Disclaimer -->
+          <div class="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
+            <p id="res-disclaimer" class="text-xs text-slate-400 leading-relaxed"></p>
+          </div>
+
+          <!-- New analysis -->
+          <button id="new-analysis-btn" class="w-full py-3 rounded-xl border border-white/15 text-sm text-slate-300 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            بدء تحليل جديد
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/assistant.js"></script>
+{% endblock %}
