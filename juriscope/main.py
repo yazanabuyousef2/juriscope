@@ -2,6 +2,8 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.database import init_db
+
 from app.routes.pages import router as pages_router
 from app.routes.api import router as api_router
 from app.routes.auth import router as auth_router
@@ -28,6 +30,19 @@ app = FastAPI(
     title="Mizan",
     description="AI Legal Assistant",
 )
+
+
+@app.on_event("startup")
+async def startup_tasks():
+    """
+    Production startup initialization.
+
+    This uses DATABASE_URL from the environment.
+    It creates all required PostgreSQL tables if they do not exist,
+    and seeds default countries and subscription plans.
+    """
+    init_db()
+
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
