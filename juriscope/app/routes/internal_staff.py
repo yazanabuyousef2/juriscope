@@ -74,7 +74,7 @@ async def staff_index(request: Request):
     current_staff = get_current_staff_optional(request)
 
     if not current_staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     db = SessionLocal()
 
@@ -121,7 +121,7 @@ async def staff_create(
     current_staff = get_current_staff_optional(request)
 
     if not current_staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not is_superadmin(current_staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -181,7 +181,7 @@ async def staff_update_role(
     current_staff = get_current_staff_optional(request)
 
     if not current_staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not is_superadmin(current_staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -229,7 +229,7 @@ async def staff_toggle_active(
     current_staff = get_current_staff_optional(request)
 
     if not current_staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not is_superadmin(current_staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -270,7 +270,7 @@ async def staff_update_password(
     current_staff = get_current_staff_optional(request)
 
     if not current_staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not is_superadmin(current_staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -307,7 +307,7 @@ async def staff_delete(
     current_staff = get_current_staff_optional(request)
 
     if not current_staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not is_superadmin(current_staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)

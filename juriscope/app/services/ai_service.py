@@ -1,63 +1,138 @@
 import json
 import os
 import re
-from typing import Any, Dict, List
+import time
+from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from app.schemas.legal import (
-    AnalyzeRequest,
-    AnalyzeResponse,
-    SimilarCase,
-    CriminalPenaltyEstimate,
-    DocumentAnalysisResponse,
-)
-
 
 load_dotenv()
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.0-flash")
+
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+REQUEST_TYPES = [
+    "general_question",
+    "case_analysis",
+    "legal_article_request",
+    "legislation_request",
+    "procedure_guidance",
+    "lawyer_brief",
+    "document_analysis",
+]
+
+AUDIENCE_MODES = [
+    "individual",
+    "lawyer",
+    "company",
+    "judge",
+    "law_student",
+    "legal_researcher",
+    "government_employee",
+]
+
+VALID_CASE_TYPES = [
+    "غير محدد",
+    "مدني",
+    "جنائي",
+    "تجاري",
+    "عمالي",
+    "أحوال شخصية",
+    "إداري",
+    "عقاري",
+    "تنفيذ",
+    "عقود",
+    "شركات",
+    "إيجارات",
+    "شيكات ومطالبات مالية",
+    "ملكية فكرية",
+    "أخرى",
+]
+
+ALL_CARDS = [
+    "case_type_correction",
+    "short_answer",
+    "plain_explanation",
+    "practical_meaning",
+    "country_context",
+    "case_understanding",
+    "legal_classification",
+    "legal_basis",
+    "articles_requested",
+    "legislation_summary",
+    "mizan_sources_summary",
+    "analysis_based_on_sources",
+    "general_legal_reasoning",
+    "verified_legal_materials",
+    "unverified_legal_points",
+    "key_risks",
+    "business_risks",
+    "relevant_documents",
+    "proof_points",
+    "defenses_or_arguments",
+    "similar_cases",
+    "criminal_penalty_estimate",
+    "next_steps",
+    "procedure_steps",
+    "when_to_consult_lawyer",
+    "educational_notes",
+    "role_based_guidance",
+    "lawyer_summary",
+    "confidence",
+    "disclaimer",
+    "legal_sources",
+]
 
 DEFAULT_DISCLAIMER = (
-    "يوفر Mizan معلومات وتحليلات قانونية مساعدة لأغراض معرفية وتنظيمية فقط، "
-    "ولا يُعد استشارة قانونية نهائية ولا ينشئ علاقة محامٍ وموكل. يجب دائمًا مراجعة "
-    "محامٍ مرخص قبل اتخاذ أي إجراء قانوني، وخصوصًا قبل توقيع العقود أو تقديم الشكاوى أو رفع الدعاوى."
+    "هذا التحليل أولي ومساعد ولا يُعد استشارة قانونية نهائية. يجب مراجعة محامٍ مرخص "
+    "أو مصدر رسمي قبل اتخاذ أي إجراء قانوني."
 )
 
-ALLOWED_DOCUMENT_MIME_TYPES = {
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-}
 
-MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024  # 10MB for Render/Gemini-friendly first version
+def generate_content_with_retry(contents, config, retries: int = 2):
+    if not client:
+        raise RuntimeError("GEMINI_API_KEY غير موجود. أضفه في Environment Variables على Render أو في ملف .env محليًا.")
 
+    models_to_try = [GEMINI_MODEL]
+    if GEMINI_FALLBACK_MODEL and GEMINI_FALLBACK_MODEL != GEMINI_MODEL:
+        models_to_try.append(GEMINI_FALLBACK_MODEL)
 
-def _client() -> genai.Client:
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY غير موجود. أضفه في ملف .env محليًا أو في Environment Variables على Render.")
-    return genai.Client(api_key=api_key)
+    last_error = None
+    for model_name in models_to_try:
+        for attempt in range(retries + 1):
+            try:
+                return client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=config,
+                )
+            except Exception as e:
+                last_error = e
+                error_text = str(e)
+                retryable = any(term in error_text.lower() for term in ["503", "unavailable", "overloaded", "temporarily", "rate"])
+                if not retryable:
+                    raise
+                time.sleep(1.5 * (attempt + 1))
+
+    raise RuntimeError("مزود الذكاء الاصطناعي مشغول حاليًا. يرجى إعادة المحاولة بعد قليل.") from last_error
 
 
 def _safe_json_loads(text: str) -> Dict[str, Any]:
-    """Parse Gemini output even if it returns JSON inside markdown fences."""
     if not text:
         raise ValueError("لم يصل رد من مزود الذكاء الاصطناعي.")
 
     cleaned = text.strip()
-
-    # Remove markdown fences like ```json ... ```
     cleaned = re.sub(r"^```(?:json)?", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(r"```$", "", cleaned).strip()
 
-    # Extract JSON object if extra text exists
     start = cleaned.find("{")
     end = cleaned.rfind("}") + 1
-
     if start >= 0 and end > start:
         cleaned = cleaned[start:end]
 
@@ -66,259 +141,427 @@ def _safe_json_loads(text: str) -> Dict[str, Any]:
     except json.JSONDecodeError as e:
         raise ValueError(f"لم يتمكن النظام من قراءة رد Gemini كـ JSON صالح: {str(e)}")
 
-def _as_list(value: Any) -> List[str]:
+
+def _ensure_list(value: Any) -> List[Any]:
     if isinstance(value, list):
-        return [str(x) for x in value]
-    if isinstance(value, str) and value.strip():
-        return [value.strip()]
-    return []
+        return value
+    if value is None or value == "":
+        return []
+    return [str(value)]
 
 
-def _plan_instruction(plan: str) -> str:
-    if plan == "المجانية":
-        return "قدّم جوابًا مختصرًا وأساسيًا مع أهم المخاطر والخطوات فقط."
-    if plan == "الأفراد":
-        return "قدّم تحليلًا واضحًا وموسعًا للمستخدم غير المتخصص، مع مستندات مطلوبة وأسئلة عملية."
-    if plan == "الأعمال":
-        return "ركّز على المخاطر التجارية، العقود، الحوكمة، حماية العملاء، والمسؤولية المالية."
-    if plan == "المحامون":
-        return "استخدم صياغة قانونية أكثر احترافية، واذكر نقاط القوة والضعف، ومسارًا قانونيًا منظمًا للمراجعة."
-    return "قدّم تحليلًا منظمًا ومفهومًا."
+def _normalize_request_type(value: Any) -> str:
+    value = str(value or "").strip()
+    return value if value in REQUEST_TYPES else "general_question"
 
 
-def _criminal_details_text(request: AnalyzeRequest) -> str:
-    details = request.criminal_details
-    if not details:
-        return "لا توجد تفاصيل جنائية إضافية."
+def _normalize_audience_mode(value: Any, user_role: str) -> str:
+    value = str(value or "").strip()
+    if value in AUDIENCE_MODES:
+        return value
+    if user_role in AUDIENCE_MODES:
+        return user_role
+    return "individual"
 
+
+def _normalize_case_type(value: Any) -> str:
+    value = str(value or "").strip()
+    if not value:
+        return "غير محدد"
+    return value if value in VALID_CASE_TYPES else value
+
+
+def _case_type_matches(selected_case_type: str, detected_case_type: str) -> bool:
+    selected = _normalize_case_type(selected_case_type)
+    detected = _normalize_case_type(detected_case_type)
+    if selected == "غير محدد" or detected == "غير محدد":
+        return True
+    return selected == detected
+
+
+def _clean_card_list(cards: Any, request_type: str, user_role: str) -> List[str]:
+    incoming = _ensure_list(cards)
+    cleaned = []
+    for card in incoming:
+        card_name = str(card).strip()
+        if card_name in ALL_CARDS and card_name not in cleaned:
+            cleaned.append(card_name)
+    if cleaned:
+        if "case_type_correction" not in cleaned:
+            cleaned.insert(0, "case_type_correction")
+        return cleaned
+    return get_default_cards_for_request(request_type, user_role)
+
+
+def get_default_cards_for_request(request_type: str, user_role: str) -> List[str]:
+    if request_type == "legal_article_request":
+        return ["case_type_correction", "short_answer", "articles_requested", "verified_legal_materials", "mizan_sources_summary", "legal_sources", "disclaimer"]
+    if request_type == "legislation_request":
+        return ["case_type_correction", "short_answer", "legislation_summary", "verified_legal_materials", "mizan_sources_summary", "legal_sources", "disclaimer"]
+    if request_type == "procedure_guidance":
+        return ["case_type_correction", "short_answer", "plain_explanation", "procedure_steps", "relevant_documents", "when_to_consult_lawyer", "disclaimer"]
+    if request_type == "lawyer_brief":
+        return ["case_type_correction", "short_answer", "case_understanding", "legal_classification", "legal_basis", "proof_points", "defenses_or_arguments", "key_risks", "lawyer_summary", "verified_legal_materials", "legal_sources", "disclaimer"]
+    if request_type == "case_analysis":
+        if user_role == "individual":
+            return ["case_type_correction", "short_answer", "plain_explanation", "practical_meaning", "legal_classification", "key_risks", "relevant_documents", "next_steps", "when_to_consult_lawyer", "verified_legal_materials", "disclaimer"]
+        if user_role == "lawyer":
+            return ["case_type_correction", "short_answer", "case_understanding", "legal_classification", "legal_basis", "analysis_based_on_sources", "proof_points", "defenses_or_arguments", "key_risks", "relevant_documents", "lawyer_summary", "verified_legal_materials", "legal_sources", "confidence", "disclaimer"]
+        return ["case_type_correction", "short_answer", "case_understanding", "legal_classification", "key_risks", "next_steps", "verified_legal_materials", "disclaimer"]
+    return ["case_type_correction", "short_answer", "plain_explanation", "practical_meaning", "legal_basis", "when_to_consult_lawyer", "disclaimer"]
+
+
+def _normalize_legal_result(data: Dict[str, Any], user_role: str, selected_case_type: str) -> Dict[str, Any]:
+    criminal = data.get("criminal_penalty_estimate") or {}
+    if not isinstance(criminal, dict):
+        criminal = {}
+
+    request_type = _normalize_request_type(data.get("request_type"))
+    audience_mode = _normalize_audience_mode(data.get("audience_mode"), user_role)
+    selected = _normalize_case_type(data.get("selected_case_type") or selected_case_type or "غير محدد")
+    detected = _normalize_case_type(data.get("detected_case_type") or "غير محدد")
+
+    case_type_match = data.get("case_type_match")
+    if not isinstance(case_type_match, bool):
+        case_type_match = _case_type_matches(selected, detected)
+
+    correction_note = data.get("case_type_correction_note", "")
+    if not correction_note and not case_type_match and selected != "غير محدد":
+        correction_note = f"تم اختيار نوع القضية على أنه ({selected})، لكن من خلال الوقائع أو السؤال يظهر أن التصنيف الأقرب هو ({detected}). لذلك تم بناء التحليل على النوع الأقرب قانونيًا."
+
+    return {
+        "request_type": request_type,
+        "audience_mode": audience_mode,
+        "cards_to_show": _clean_card_list(data.get("cards_to_show"), request_type, audience_mode),
+        "selected_case_type": selected,
+        "detected_case_type": detected,
+        "case_type_match": case_type_match,
+        "case_type_correction_note": correction_note,
+        "short_answer": data.get("short_answer", ""),
+        "plain_explanation": data.get("plain_explanation", ""),
+        "practical_meaning": data.get("practical_meaning", ""),
+        "country_context": data.get("country_context", ""),
+        "case_understanding": data.get("case_understanding", ""),
+        "legal_classification": data.get("legal_classification", ""),
+        "legal_basis": data.get("legal_basis", ""),
+        "articles_requested": _ensure_list(data.get("articles_requested")),
+        "legislation_summary": data.get("legislation_summary", ""),
+        "legal_accuracy_note": data.get("legal_accuracy_note", ""),
+        "confidence_level": data.get("confidence_level", "منخفض"),
+        "confidence_reason": data.get("confidence_reason", ""),
+        "mizan_sources_summary": data.get("mizan_sources_summary", ""),
+        "analysis_based_on_sources": data.get("analysis_based_on_sources", ""),
+        "general_legal_reasoning": data.get("general_legal_reasoning", ""),
+        "source_dependency_level": data.get("source_dependency_level", ""),
+        "verified_legal_materials": _ensure_list(data.get("verified_legal_materials")),
+        "unverified_legal_points": _ensure_list(data.get("unverified_legal_points")),
+        "key_risks": _ensure_list(data.get("key_risks")),
+        "business_risks": _ensure_list(data.get("business_risks")),
+        "relevant_documents": _ensure_list(data.get("relevant_documents")),
+        "proof_points": _ensure_list(data.get("proof_points")),
+        "defenses_or_arguments": _ensure_list(data.get("defenses_or_arguments")),
+        "similar_cases": _ensure_list(data.get("similar_cases")),
+        "next_steps": _ensure_list(data.get("next_steps")),
+        "procedure_steps": _ensure_list(data.get("procedure_steps")),
+        "when_to_consult_lawyer": data.get("when_to_consult_lawyer", ""),
+        "educational_notes": data.get("educational_notes", ""),
+        "lawyer_summary": data.get("lawyer_summary", ""),
+        "role_based_guidance": data.get("role_based_guidance", ""),
+        "plan_based_depth": data.get("plan_based_depth", ""),
+        "combined_role_plan_note": data.get("combined_role_plan_note", ""),
+        "disclaimer": data.get("disclaimer", DEFAULT_DISCLAIMER),
+        "criminal_penalty_estimate": {
+            "show": bool(criminal.get("show", False)),
+            "alleged_crime": criminal.get("alleged_crime", ""),
+            "possible_penalty_range": criminal.get("possible_penalty_range", ""),
+            "factors_that_may_increase_penalty": _ensure_list(criminal.get("factors_that_may_increase_penalty")),
+            "factors_that_may_reduce_penalty": _ensure_list(criminal.get("factors_that_may_reduce_penalty")),
+            "important_warning": criminal.get("important_warning", ""),
+        },
+    }
+
+
+def _normalize_document_result(data: Dict[str, Any], selected_case_type: str, user_role: str) -> Dict[str, Any]:
+    selected = _normalize_case_type(data.get("selected_case_type") or selected_case_type or "غير محدد")
+    detected = _normalize_case_type(data.get("detected_case_type") or "غير محدد")
+    match = data.get("case_type_match") if isinstance(data.get("case_type_match"), bool) else _case_type_matches(selected, detected)
+    return {
+        "request_type": "document_analysis",
+        "audience_mode": _normalize_audience_mode(data.get("audience_mode"), user_role),
+        "cards_to_show": _clean_card_list(data.get("cards_to_show"), "document_analysis", user_role),
+        "selected_case_type": selected,
+        "detected_case_type": detected,
+        "case_type_match": match,
+        "case_type_correction_note": data.get("case_type_correction_note", ""),
+        "document_type": data.get("document_type", ""),
+        "summary": data.get("summary", ""),
+        "country_context": data.get("country_context", ""),
+        "confidence_level": data.get("confidence_level", "منخفض"),
+        "confidence_reason": data.get("confidence_reason", ""),
+        "parties": _ensure_list(data.get("parties")),
+        "main_obligations": _ensure_list(data.get("main_obligations")),
+        "risky_clauses": _ensure_list(data.get("risky_clauses")),
+        "legal_gaps": _ensure_list(data.get("legal_gaps")),
+        "missing_clauses": _ensure_list(data.get("missing_clauses")),
+        "suggested_edits": _ensure_list(data.get("suggested_edits")),
+        "verified_legal_materials": _ensure_list(data.get("verified_legal_materials")),
+        "unverified_legal_points": _ensure_list(data.get("unverified_legal_points")),
+        "risk_level": data.get("risk_level", ""),
+        "lawyer_summary": data.get("lawyer_summary", ""),
+        "disclaimer": data.get("disclaimer", DEFAULT_DISCLAIMER),
+    }
+
+
+def get_country_legal_style(country: str) -> str:
     return f"""
-تفاصيل جنائية إضافية إن وُجدت:
-- نوع الجرم أو الفعل المنسوب: {details.alleged_crime or "غير مذكور"}
-- هل توجد سوابق؟ {details.has_prior_record or "غير معروف"}
-- عدد السوابق: {details.prior_count or "غير مذكور"}
-- هل يوجد اعتراف؟ {details.confession or "غير معروف"}
-- هل يوجد شهود؟ {details.witnesses or "غير معروف"}
-- هل يوجد ضرر مادي أو جسدي؟ {details.harm or "غير معروف"}
-- ظروف مخففة محتملة: {details.mitigating_factors or "غير مذكور"}
-- ظروف مشددة محتملة: {details.aggravating_factors or "غير مذكور"}
+اعتمد أسلوبًا مناسبًا للبيئة القانونية في {country}.
+لا تستخدم قوانين دولة أخرى عند تحليل حساب من {country}.
+إذا لم تكن المادة موجودة ضمن مصادر Mizan المرفقة، لا تذكر رقمها.
 """
 
 
-def _build_prompt(request: AnalyzeRequest) -> str:
-    is_criminal = request.case_type == "جنائي"
+def get_role_instruction(user_role: str, country: str) -> str:
+    roles = {
+        "individual": "نوع المستخدم: فرد. اكتب بلغة بسيطة وعملية، وركز على ماذا يعني الموقف وما الخطوات ومتى يحتاج محامي.",
+        "lawyer": f"نوع المستخدم: محامٍ. استخدم أسلوبًا قانونيًا احترافيًا ضمن البيئة القانونية في {country}، وركز على التكييف والدفوع والإثبات.",
+        "company": "نوع المستخدم: شركة / رجل أعمال. ركز على المخاطر القانونية والمالية والتشغيلية والوقاية.",
+        "judge": "نوع المستخدم: قاضٍ. استخدم أسلوبًا محايدًا ولا تصدر حكمًا نهائيًا.",
+        "law_student": "نوع المستخدم: طالب قانون. اجعل الجواب تعليميًا ومنظمًا مع شرح القاعدة والتطبيق.",
+        "legal_researcher": "نوع المستخدم: باحث قانوني. استخدم أسلوبًا تحليليًا ومنظمًا.",
+        "government_employee": "نوع المستخدم: موظف حكومي. ركز على الاختصاص والإجراءات وحدود الصلاحية.",
+    }
+    return roles.get(user_role, roles["individual"])
 
-    return f"""
+
+def get_plan_instruction(plan: str) -> str:
+    if plan in ["enterprise", "premium", "staff_unlimited"]:
+        return "قدّم تحليلًا عميقًا عند الحاجة، لكن لا تعرض كروت غير لازمة إذا كان السؤال بسيطًا."
+    if plan in ["pro", "lawyer", "business"]:
+        return "قدّم تحليلًا منظمًا مع مخاطر ومستندات وخطوات عملية."
+    return "اجعل الإجابة واضحة ومختصرة وحذرة."
+
+
+def get_accuracy_rules() -> str:
+    return """
+قواعد الدقة:
+- مصادر Mizan المعتمدة هي المصدر الأساسي للتشريعات والمواد.
+- لا تذكر رقم مادة قانونية إلا إذا كان موجودًا ضمن مصادر Mizan المرفقة.
+- لا تخترع أحكامًا قضائية أو سوابق.
+- استخدم التحليل العام فقط للتفسير والخطوات العملية.
+- في القضايا الجنائية لا تعتبر الشخص مذنبًا، استخدم: الفعل المنسوب، في حال ثبوت الفعل.
+"""
+
+
+def get_request_type_instruction() -> str:
+    return """
+صنّف الطلب إلى request_type واحد:
+general_question: سؤال عام.
+case_analysis: وقائع أو نزاع.
+legal_article_request: طلب مادة قانونية محددة.
+legislation_request: طلب قانون أو تشريع كامل أو ملخص تشريع.
+procedure_guidance: سؤال عن خطوات وإجراءات.
+lawyer_brief: ملخص لمحامٍ أو تحضير ملف.
+لا تعرض كل الكروت دائمًا، واجعل cards_to_show مناسبة.
+"""
+
+
+def get_case_type_instruction() -> str:
+    return """
+حدد detected_case_type دائمًا من السؤال والسياق.
+إذا selected_case_type = غير محدد، حدد التصنيف تلقائيًا دون تنبيه تصحيح.
+إذا اختار المستخدم نوعًا خاطئًا، اجعل case_type_match=false واكتب case_type_correction_note وحلل حسب detected_case_type الصحيح.
+القيم المسموحة: غير محدد، مدني، جنائي، تجاري، عمالي، أحوال شخصية، إداري، عقاري، تنفيذ، عقود، شركات، إيجارات، شيكات ومطالبات مالية، ملكية فكرية، أخرى.
+"""
+
+
+def build_conversation_history_text(conversation_history: Optional[List[Dict[str, Any]]]) -> str:
+    if not conversation_history:
+        return "لا يوجد سياق محادثة سابق."
+    lines = []
+    for item in conversation_history[-8:]:
+        if not isinstance(item, dict):
+            continue
+        role = "المستخدم" if item.get("role") == "user" else "Mizan"
+        content = str(item.get("content", "")).strip()
+        if content:
+            lines.append(f"{role}: {content[:1200]}")
+    return "\n\n".join(lines) if lines else "لا يوجد سياق محادثة سابق."
+
+
+async def analyze_legal_question(
+    question: str,
+    country: str,
+    case_type: str = "غير محدد",
+    selected_case_type: str = "غير محدد",
+    conversation_history: Optional[List[Dict[str, Any]]] = None,
+    plan: str = "free",
+    user_role: str = "individual",
+    criminal_details: Optional[Dict[str, Any]] = None,
+    legal_sources_context: str = "",
+    legal_source_policy: str = "",
+    legal_sources: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    legal_sources = legal_sources or []
+    criminal_details = criminal_details or {}
+    selected_case_type = _normalize_case_type(selected_case_type or case_type)
+
+    prompt = f"""
 أنت Mizan، مساعد قانوني ذكي باللغة العربية.
 
-المستخدم اختار:
-- الدولة: {request.country}
-- نوع القضية: {request.case_type}
-- الباقة: {request.plan}
-
-تعليمات الباقة:
-{_plan_instruction(request.plan)}
-
-مهمتك:
-حلّل السؤال القانوني بناءً على الدولة المختارة ونوع القضية. يجب أن يكون الجواب باللغة العربية وبصيغة JSON فقط.
-
-قواعد قانونية وأخلاقية مهمة:
-1. لا تدّعِ أنك محامٍ، ولا تقدّم استشارة قانونية نهائية.
-2. لا تخترع أرقام مواد قانونية أو أسماء أحكام قضائية غير مؤكدة.
-3. إذا لم تكن متأكدًا من نص قانوني محدد أو عقوبة دقيقة في دولة معينة، قل إن الأمر يحتاج إلى مراجعة النص الرسمي ومحامٍ مختص في تلك الدولة.
-4. يجب أن يتأثر التحليل بالدولة المختارة: {request.country}.
-5. لا تضمن نتيجة قضائية أو حكمًا نهائيًا.
-6. لا تستخدم مصطلح "مذنب" أو "الحكم المتوقع للمذنب".
-7. في القضايا الجنائية استخدم عبارات مثل: "الفعل المنسوب"، "في حال ثبوت الفعل"، "العقوبة المحتملة"، "النطاق العقابي المحتمل".
-8. للحالات المشابهة، لا تخترع أسماء قضايا حقيقية. استخدم أوصافًا عامة مثل "حالة مشابهة في نزاع شراكة" أو "حالة مشابهة في دعوى جنائية".
-9. إذا كانت المعلومات ناقصة، اذكر المعلومات الناقصة ضمن التحليل والخطوات.
-10. أرجع JSON فقط، بدون markdown وبدون أي شرح خارج JSON.
-
-{_criminal_details_text(request) if is_criminal else ""}
-
-السؤال:
-{request.question}
-
-أرجع JSON بهذه المفاتيح بالضبط:
-{{
-  "short_answer": "إجابة مختصرة واضحة",
-  "country_context": "شرح مختصر كيف تؤثر الدولة المختارة على التحليل",
-  "case_understanding": "فهم الحالة وإعادة صياغتها قانونيًا",
-  "legal_classification": "التكييف أو التصنيف القانوني الأولي",
-  "key_risks": ["مخاطر قانونية رئيسية"],
-  "relevant_documents": ["مستندات أو أدلة مطلوبة"],
-  "similar_cases": [
-    {{
-      "title": "عنوان عام لحالة مشابهة دون اختراع حكم حقيقي",
-      "similarity": "نسبة تقريبية مثل 80%",
-      "principle": "المبدأ القانوني العام",
-      "why_relevant": "سبب ارتباطها بالحالة"
-    }}
-  ],
-  "next_steps": ["خطوات عملية مقترحة"],
-  "lawyer_summary": "ملخص احترافي يمكن إرساله للمحامي",
-  "criminal_penalty_estimate": {{
-    "show": {"true" if is_criminal else "false"},
-    "alleged_crime": "الفعل المنسوب إذا كانت القضية جنائية",
-    "possible_penalty_range": "النطاق العقابي المحتمل في حال ثبوت الفعل، أو فارغ لغير الجنائي",
-    "factors_that_may_increase_penalty": ["عوامل قد تشدد العقوبة"],
-    "factors_that_may_reduce_penalty": ["عوامل قد تخفف العقوبة"],
-    "important_warning": "تنبيه مهم حول أن التقدير ليس حكمًا نهائيًا"
-  }},
-  "disclaimer": "{DEFAULT_DISCLAIMER}"
-}}
-"""
-
-
-def _normalize_response(data: Dict[str, Any], request: AnalyzeRequest) -> AnalyzeResponse:
-    penalty_data = data.get("criminal_penalty_estimate") or {}
-    is_criminal = request.case_type == "جنائي"
-
-    similar_cases = [
-        SimilarCase(
-            title=str(case.get("title", "")),
-            similarity=str(case.get("similarity", "")),
-            principle=str(case.get("principle", "")),
-            why_relevant=str(case.get("why_relevant", "")),
-        )
-        for case in data.get("similar_cases", [])
-        if isinstance(case, dict)
-    ]
-
-    penalty = CriminalPenaltyEstimate(
-        show=bool(penalty_data.get("show", is_criminal)) if is_criminal else False,
-        alleged_crime=str(penalty_data.get("alleged_crime", "")),
-        possible_penalty_range=str(penalty_data.get("possible_penalty_range", "")),
-        factors_that_may_increase_penalty=_as_list(penalty_data.get("factors_that_may_increase_penalty", [])),
-        factors_that_may_reduce_penalty=_as_list(penalty_data.get("factors_that_may_reduce_penalty", [])),
-        important_warning=str(
-            penalty_data.get(
-                "important_warning",
-                "هذا تقدير عام وليس حكمًا قضائيًا، ويعتمد القرار النهائي على المحكمة المختصة والأدلة والتكييف القانوني والنصوص السارية."
-            )
-        ),
-    )
-
-    return AnalyzeResponse(
-        short_answer=str(data.get("short_answer", "")),
-        country_context=str(data.get("country_context", f"تم توجيه التحليل وفق الدولة المختارة: {request.country}.")),
-        case_understanding=str(data.get("case_understanding", "")),
-        legal_classification=str(data.get("legal_classification", "")),
-        key_risks=_as_list(data.get("key_risks", [])),
-        relevant_documents=_as_list(data.get("relevant_documents", [])),
-        similar_cases=similar_cases,
-        next_steps=_as_list(data.get("next_steps", [])),
-        lawyer_summary=str(data.get("lawyer_summary", "")),
-        criminal_penalty_estimate=penalty,
-        disclaimer=str(data.get("disclaimer", DEFAULT_DISCLAIMER)),
-    )
-
-
-async def analyze_legal_question(request: AnalyzeRequest) -> AnalyzeResponse:
-    client = _client()
-    prompt = _build_prompt(request)
-
-    response = client.models.generate_content(
-    model=MODEL,
-    contents=prompt,
-    config=types.GenerateContentConfig(
-        response_mime_type="application/json"
-    ),
-)
-
-    raw_text = response.text or ""
-    data = _safe_json_loads(raw_text)
-    return _normalize_response(data, request)
-
-
-def _document_prompt(country: str, document_type: str, plan: str, question: str, filename: str) -> str:
-    return f"""
-أنت Mizan، مساعد قانوني ذكي متخصص في تحليل المستندات القانونية باللغة العربية.
-
-المستخدم رفع مستندًا قانونيًا لتحليله.
-- الدولة المختارة: {country}
-- نوع المستند المختار: {document_type}
+معلومات الحساب:
+- الدولة القانونية: {country}
+- نوع المستخدم: {user_role}
 - الباقة: {plan}
-- اسم الملف: {filename}
-- سؤال أو ملاحظة المستخدم: {question or "لا توجد ملاحظة إضافية"}
+- نوع القضية الذي اختاره المستخدم: {selected_case_type}
 
-تعليمات مهمة جدًا:
-1. اقرأ محتوى الملف المرفق، حتى لو كان PDF ممسوحًا أو صورة لعقد أو مستند.
-2. استخرج النص والمعنى القانوني قدر الإمكان من الملف.
-3. لا تقل إنك لا تستطيع قراءة المستند إلا إذا كان غير واضح فعلًا.
-4. حلّل المستند وفق الدولة المختارة، لكن لا تخترع أرقام مواد قانونية أو أحكامًا غير مؤكدة.
-5. ركّز على الثغرات، البنود الخطرة، الالتزامات، البنود الناقصة، والتعديلات المقترحة.
-6. لا تحكم ببطلان العقد بشكل قطعي. استخدم عبارات مثل: "قد يسبب خطرًا"، "يحتاج إلى مراجعة"، "قد يكون غير متوازن".
-7. لا تقدّم استشارة قانونية نهائية ولا تستبدل مراجعة محامٍ مرخص.
-8. إذا كان المستند غير واضح أو ناقصًا، اذكر ذلك ضمن الثغرات والتنبيه.
-9. أرجع JSON فقط، بدون markdown وبدون شرح خارجه.
+تعليمات الدولة:
+{get_country_legal_style(country)}
+
+تعليمات نوع المستخدم:
+{get_role_instruction(user_role, country)}
 
 تعليمات الباقة:
-{_plan_instruction(plan)}
+{get_plan_instruction(plan)}
 
-أرجع JSON بهذه المفاتيح بالضبط:
+تعليمات نوع الطلب:
+{get_request_type_instruction()}
+
+تعليمات نوع القضية:
+{get_case_type_instruction()}
+
+قواعد الدقة:
+{get_accuracy_rules()}
+
+سياسة الاعتماد على مصادر Mizan:
+{legal_source_policy}
+
+مصادر Mizan القانونية المسترجعة:
+{legal_sources_context}
+
+سياق المحادثة السابقة:
+{build_conversation_history_text(conversation_history)}
+
+تفاصيل جنائية إضافية:
+{json.dumps(criminal_details, ensure_ascii=False)}
+
+سؤال المستخدم الحالي:
+{question}
+
+أرجع JSON فقط بدون Markdown بهذا الشكل:
 {{
-  "document_type": "نوع المستند بعد قراءته، مثل عقد شراكة أو عقد عمل",
-  "country_context": "كيف تؤثر الدولة المختارة على قراءة المستند",
-  "summary": "ملخص واضح للمستند",
-  "parties": ["الأطراف المذكورون في المستند"],
-  "main_obligations": ["الالتزامات الرئيسية على كل طرف"],
-  "risky_clauses": ["البنود الخطرة أو غير المتوازنة"],
-  "legal_gaps": ["الثغرات القانونية أو الغموض في الصياغة"],
-  "missing_clauses": ["بنود مهمة ناقصة يجب إضافتها"],
-  "suggested_edits": ["تعديلات أو صياغات مقترحة لتحسين المستند"],
-  "risk_level": "منخفض أو متوسط أو مرتفع مع سبب مختصر",
-  "lawyer_summary": "ملخص جاهز للمحامي عن المستند ومخاطره",
+  "request_type": "general_question | case_analysis | legal_article_request | legislation_request | procedure_guidance | lawyer_brief",
+  "audience_mode": "{user_role}",
+  "cards_to_show": ["short_answer"],
+  "selected_case_type": "{selected_case_type}",
+  "detected_case_type": "غير محدد | مدني | جنائي | تجاري | عمالي | أحوال شخصية | إداري | عقاري | تنفيذ | عقود | شركات | إيجارات | شيكات ومطالبات مالية | ملكية فكرية | أخرى",
+  "case_type_match": true,
+  "case_type_correction_note": "",
+  "short_answer": "",
+  "plain_explanation": "",
+  "practical_meaning": "",
+  "country_context": "",
+  "case_understanding": "",
+  "legal_classification": "",
+  "legal_basis": "",
+  "articles_requested": [],
+  "legislation_summary": "",
+  "mizan_sources_summary": "",
+  "analysis_based_on_sources": "",
+  "general_legal_reasoning": "",
+  "source_dependency_level": "مرتفع أو متوسط أو منخفض",
+  "legal_accuracy_note": "",
+  "confidence_level": "مرتفع أو متوسط أو منخفض",
+  "confidence_reason": "",
+  "verified_legal_materials": [],
+  "unverified_legal_points": [],
+  "key_risks": [],
+  "business_risks": [],
+  "relevant_documents": [],
+  "proof_points": [],
+  "defenses_or_arguments": [],
+  "similar_cases": [],
+  "criminal_penalty_estimate": {{"show": false, "alleged_crime": "", "possible_penalty_range": "", "factors_that_may_increase_penalty": [], "factors_that_may_reduce_penalty": [], "important_warning": ""}},
+  "next_steps": [],
+  "procedure_steps": [],
+  "when_to_consult_lawyer": "",
+  "educational_notes": "",
+  "role_based_guidance": "",
+  "plan_based_depth": "",
+  "combined_role_plan_note": "",
+  "lawyer_summary": "",
   "disclaimer": "{DEFAULT_DISCLAIMER}"
 }}
 """
 
-
-def _normalize_document_response(data: Dict[str, Any], country: str, document_type: str) -> DocumentAnalysisResponse:
-    return DocumentAnalysisResponse(
-        document_type=str(data.get("document_type", document_type)),
-        country_context=str(data.get("country_context", f"تمت قراءة المستند وفق الدولة المختارة: {country}.")),
-        summary=str(data.get("summary", "")),
-        parties=_as_list(data.get("parties", [])),
-        main_obligations=_as_list(data.get("main_obligations", [])),
-        risky_clauses=_as_list(data.get("risky_clauses", [])),
-        legal_gaps=_as_list(data.get("legal_gaps", [])),
-        missing_clauses=_as_list(data.get("missing_clauses", [])),
-        suggested_edits=_as_list(data.get("suggested_edits", [])),
-        risk_level=str(data.get("risk_level", "غير محدد")),
-        lawyer_summary=str(data.get("lawyer_summary", "")),
-        disclaimer=str(data.get("disclaimer", DEFAULT_DISCLAIMER)),
+    response = generate_content_with_retry(
+        contents=prompt,
+        config=types.GenerateContentConfig(temperature=0.2, response_mime_type="application/json"),
     )
+    data = _safe_json_loads(response.text or "")
+    result = _normalize_legal_result(data, user_role=user_role, selected_case_type=selected_case_type)
+    result["legal_sources"] = legal_sources
+    return result
 
 
 async def analyze_legal_document(
-    *,
     file_bytes: bytes,
     filename: str,
-    content_type: str,
-    country: str,
-    document_type: str,
-    plan: str,
+    content_type: str = "application/octet-stream",
+    country: str = "الأردن",
+    document_type: str = "مستند قانوني",
+    selected_case_type: str = "غير محدد",
+    plan: str = "free",
+    user_role: str = "individual",
     question: str = "",
-) -> DocumentAnalysisResponse:
-    if not file_bytes:
-        raise ValueError("لم يتم رفع أي ملف.")
+) -> Dict[str, Any]:
+    if len(file_bytes or b"") > 20 * 1024 * 1024:
+        raise ValueError("حجم الملف كبير جدًا. الحد الحالي 20MB.")
 
-    if len(file_bytes) > MAX_DOCUMENT_SIZE_BYTES:
-        raise ValueError("الملف كبير جدًا. الحد الحالي 10MB. يرجى رفع نسخة مختصرة أو ملف أصغر.")
+    prompt = f"""
+أنت Mizan، مساعد قانوني لتحليل المستندات القانونية باللغة العربية.
 
-    mime_type = content_type or "application/octet-stream"
-    if mime_type not in ALLOWED_DOCUMENT_MIME_TYPES:
-        raise ValueError("نوع الملف غير مدعوم. الرجاء رفع PDF أو صورة بصيغة JPG/PNG/WEBP.")
+الدولة: {country}
+نوع المستخدم: {user_role}
+الباقة: {plan}
+نوع المستند المختار: {document_type}
+اسم الملف: {filename}
+نوع القضية المختار: {selected_case_type}
+سؤال المستخدم: {question or "لا يوجد"}
 
-    client = _client()
-    prompt = _document_prompt(country, document_type, plan, question, filename)
-    file_part = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
+{get_case_type_instruction()}
+{get_accuracy_rules()}
 
-    response = client.models.generate_content(
-        model=MODEL,
+حلل المستند المرفق. إذا لم يكن واضحًا صرّح بذلك. أرجع JSON فقط:
+{{
+  "request_type": "document_analysis",
+  "audience_mode": "{user_role}",
+  "cards_to_show": ["case_type_correction", "short_answer", "plain_explanation", "key_risks", "relevant_documents", "verified_legal_materials", "disclaimer"],
+  "selected_case_type": "{selected_case_type}",
+  "detected_case_type": "غير محدد | مدني | جنائي | تجاري | عمالي | أحوال شخصية | إداري | عقاري | تنفيذ | عقود | شركات | إيجارات | شيكات ومطالبات مالية | ملكية فكرية | أخرى",
+  "case_type_match": true,
+  "case_type_correction_note": "",
+  "document_type": "",
+  "summary": "",
+  "country_context": "",
+  "confidence_level": "مرتفع أو متوسط أو منخفض",
+  "confidence_reason": "",
+  "parties": [],
+  "main_obligations": [],
+  "risky_clauses": [],
+  "legal_gaps": [],
+  "missing_clauses": [],
+  "suggested_edits": [],
+  "verified_legal_materials": [],
+  "unverified_legal_points": [],
+  "risk_level": "منخفض أو متوسط أو مرتفع",
+  "lawyer_summary": "",
+  "disclaimer": "{DEFAULT_DISCLAIMER}"
+}}
+"""
+    file_part = types.Part.from_bytes(data=file_bytes, mime_type=content_type or "application/octet-stream")
+    response = generate_content_with_retry(
         contents=[prompt, file_part],
+        config=types.GenerateContentConfig(temperature=0.2, response_mime_type="application/json"),
     )
-
-    raw_text = response.text or ""
-    data = _safe_json_loads(raw_text)
-    return _normalize_document_response(data, country, document_type)
+    data = _safe_json_loads(response.text or "")
+    return _normalize_document_result(data, selected_case_type=selected_case_type, user_role=user_role)

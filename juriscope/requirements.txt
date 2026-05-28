@@ -6,3 +6,6 @@ pydantic
 openai
 python-dotenv
 google-genai
+sqlalchemy
+psycopg2-binary
+requests

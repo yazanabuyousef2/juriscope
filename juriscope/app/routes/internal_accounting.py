@@ -401,7 +401,7 @@ async def accounting_dashboard(request: Request):
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_accounting(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -468,7 +468,7 @@ async def accounting_settings_update(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_accounting(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -537,7 +537,7 @@ async def accounting_invoice_create(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_accounting(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -740,7 +740,7 @@ async def accounting_payment_create(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_accounting(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -830,7 +830,7 @@ async def accounting_expense_create(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_accounting(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)

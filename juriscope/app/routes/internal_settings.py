@@ -250,7 +250,7 @@ async def internal_settings_index(request: Request):
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_settings(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -287,7 +287,7 @@ async def internal_settings_update(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_settings(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -346,7 +346,7 @@ async def internal_settings_reset_defaults(request: Request):
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if staff.role != "superadmin":
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)

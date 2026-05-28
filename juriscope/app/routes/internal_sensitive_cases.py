@@ -51,7 +51,7 @@ async def sensitive_cases_index(request: Request):
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_view_sensitive_cases(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -153,7 +153,7 @@ async def sensitive_case_view(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_view_sensitive_cases(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)

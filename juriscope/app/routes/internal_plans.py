@@ -61,7 +61,7 @@ async def subscription_plans_index(request: Request):
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not is_superadmin(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -110,7 +110,7 @@ async def subscription_plan_update(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not is_superadmin(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)

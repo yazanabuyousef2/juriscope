@@ -153,6 +153,34 @@ def init_db():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS case_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        case_id INTEGER,
+        user_id INTEGER NOT NULL,
+        question TEXT NOT NULL,
+        answer_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (case_id) REFERENCES cases(id)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS case_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        case_id INTEGER,
+        user_id INTEGER NOT NULL,
+        filename TEXT NOT NULL,
+        stored_path TEXT DEFAULT '',
+        content_type TEXT DEFAULT '',
+        analysis_json TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (case_id) REFERENCES cases(id)
+    )
+    """)
+
     conn.commit()
     conn.close()
 

@@ -164,7 +164,7 @@ async def legal_documents_index(request: Request):
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_legal_documents(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -236,7 +236,7 @@ async def legal_document_create(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_legal_documents(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -327,7 +327,7 @@ async def legal_document_upload_pdf(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_legal_documents(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)
@@ -539,7 +539,7 @@ async def legal_document_update_status(
     staff = get_current_staff_optional(request)
 
     if not staff:
-        return RedirectResponse(url="/login", status_code=303)
+        return RedirectResponse(url="/internal/login", status_code=303)
 
     if not can_manage_legal_documents(staff):
         return RedirectResponse(url="/internal/dashboard?error=not_allowed", status_code=303)

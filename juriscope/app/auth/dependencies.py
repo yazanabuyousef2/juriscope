@@ -25,3 +25,18 @@ def redirect_if_not_logged_in(request: Request):
     if not user:
         return RedirectResponse(url="/login", status_code=303)
     return None
+
+
+
+def is_staff_mode_user(user: dict | None) -> bool:
+    if not user:
+        return False
+    return bool(user.get("is_staff_mode") or user.get("session_mode") == "staff_unlimited" or user.get("plan") == "staff_unlimited")
+
+
+def is_unlimited_user(user: dict | None) -> bool:
+    if not user:
+        return False
+    if is_staff_mode_user(user):
+        return True
+    return (user.get("plan") or user.get("plan_code") or "") in ["enterprise", "staff_unlimited"]
