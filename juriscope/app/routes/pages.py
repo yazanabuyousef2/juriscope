@@ -2,84 +2,61 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.auth.dependencies import (
-    get_current_user_optional,
-    require_user,
-    is_staff_mode_user,
-    is_unlimited_user,
-)
-from app.database import fetch_all, user_limits, user_usage
-
+from app.auth.dependencies import get_current_user_optional, require_user
+from app.database import fetch_all, fetch_one, user_usage, user_limits
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-def build_usage_and_limits(user):
-    if not user:
-        return {
-            "usage": {
-                "analyses": 0,
-                "documents": 0,
-                "cases": 0,
-            },
-            "limits": {
-                "analyses_per_month": 0,
-                "documents_per_month": 0,
-                "cases": 0,
-            },
-        }
-
-    if is_staff_mode_user(user) or is_unlimited_user(user):
-        return {
-            "usage": {
-                "analyses": 0,
-                "documents": 0,
-                "cases": 0,
-            },
-            "limits": {
-                "analyses_per_month": "غير محدود",
-                "documents_per_month": "غير محدود",
-                "cases": "غير محدود",
-            },
-        }
-
-    raw_usage = user_usage(user["id"])
-    raw_limits = user_limits(user["plan"])
-
-    return {
-        "usage": {
-            "analyses": raw_usage.get("monthly_analyses", 0),
-            "documents": raw_usage.get("monthly_documents", 0),
-            "cases": raw_usage.get("cases", 0),
-        },
-        "limits": {
-            "analyses_per_month": raw_limits.get("monthly_analyses", 999999),
-            "documents_per_month": raw_limits.get("monthly_documents", 999999),
-            "cases": raw_limits.get("cases", 999999),
-        },
-    }
-
-
-def ctx(request: Request):
-    user = get_current_user_optional(request)
-    usage_data = build_usage_and_limits(user)
-
-    return {
+def ctx(request: Request, extra: dict | None = None):
+    data = {
         "request": request,
-        "user": user,
-        "is_staff_mode": is_staff_mode_user(user),
-        "is_unlimited_user": is_unlimited_user(user),
-        **usage_data,
+        "user": get_current_user_optional(request),
     }
+
+    if extra:
+        data.update(extra)
+
+    return data
 
 
 @router.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def home(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="index.html",
         context=ctx(request),
+    )
+
+
+@router.get("/assistant", response_class=HTMLResponse)
+async def assistant(request: Request):
+    user = require_user(request)
+
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    cases = fetch_all(
+        """
+        SELECT id, title, country, case_type, status
+        FROM cases
+        WHERE user_id = ?
+        ORDER BY updated_at DESC
+        """,
+        (user["id"],),
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="assistant.html",
+        context=ctx(
+            request,
+            {
+                "user": user,
+                "cases": cases,
+            },
+        ),
     )
 
 
@@ -110,59 +87,67 @@ async def pricing(request: Request):
     )
 
 
-@router.get("/assistant", response_class=HTMLResponse)
-async def assistant(request: Request):
-    user = require_user(request)
-
-    if not user:
-        return RedirectResponse(url="/login?next=/assistant", status_code=303)
-
-    if is_staff_mode_user(user):
-        cases = []
-    else:
-        cases = fetch_all(
-            """
-            SELECT id, title, country, case_type, status, updated_at
-            FROM cases
-            WHERE user_id = ?
-            ORDER BY updated_at DESC
-            """,
-            (user["id"],),
-        )
-
-    usage_data = build_usage_and_limits(user)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="assistant.html",
-        context={
-            "request": request,
-            "user": user,
-            "cases": cases,
-            "is_staff_mode": is_staff_mode_user(user),
-            "is_unlimited_user": is_unlimited_user(user),
-            **usage_data,
-        },
-    )
-
-
 @router.get("/profile", response_class=HTMLResponse)
 async def profile(request: Request):
     user = require_user(request)
 
     if not user:
-        return RedirectResponse(url="/login?next=/profile", status_code=303)
+        return RedirectResponse(url="/login", status_code=303)
 
-    usage_data = build_usage_and_limits(user)
+    raw_usage = user_usage(user["id"])
+    raw_limits = user_limits(user["plan"])
+
+    usage = {
+        "analyses": raw_usage.get("monthly_analyses", 0),
+        "documents": raw_usage.get("monthly_documents", 0),
+        "cases": raw_usage.get("cases", 0),
+    }
+
+    limits = {
+        "analyses_per_month": raw_limits.get("monthly_analyses", 3),
+        "documents_per_month": raw_limits.get("monthly_documents", 1),
+        "cases": raw_limits.get("cases", 1),
+    }
+
+    cases_count = fetch_one(
+        "SELECT COUNT(*) AS count FROM cases WHERE user_id = ?",
+        (user["id"],),
+    )
+
+    analyses_count = fetch_one(
+        "SELECT COUNT(*) AS count FROM analyses WHERE user_id = ?",
+        (user["id"],),
+    )
+
+    documents_count = fetch_one(
+        "SELECT COUNT(*) AS count FROM documents WHERE user_id = ?",
+        (user["id"],),
+    )
+
+    recent_cases = fetch_all(
+        """
+        SELECT id, title, country, case_type, status, updated_at
+        FROM cases
+        WHERE user_id = ?
+        ORDER BY updated_at DESC
+        LIMIT 5
+        """,
+        (user["id"],),
+    )
 
     return templates.TemplateResponse(
         request=request,
         name="profile.html",
-        context={
-            "request": request,
-            "user": user,
-            "is_staff_mode": is_staff_mode_user(user),
-            "is_unlimited_user": is_unlimited_user(user),
-            **usage_data,
-        },
+        context=ctx(
+            request,
+            {
+                "user": user,
+                "usage": usage,
+                "limits": limits,
+                "cases_count": cases_count["count"] if cases_count else 0,
+                "analyses_count": analyses_count["count"] if analyses_count else 0,
+                "documents_count": documents_count["count"] if documents_count else 0,
+                "recent_cases": recent_cases,
+            },
+        ),
     )

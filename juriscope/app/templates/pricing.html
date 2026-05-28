@@ -1,243 +1,38 @@
 {% extends "base.html" %}
-
-{% block title %}الباقات | Mizan{% endblock %}
-
+{% block title %}الباقات – Mizan{% endblock %}
 {% block content %}
-{% set current_plan = user.plan if user else "free" %}
-
-<section class="min-h-screen py-12 px-4">
+<section class="py-16 px-4 min-h-screen">
   <div class="max-w-7xl mx-auto">
-
     <div class="text-center mb-12">
-      <h1 class="text-3xl sm:text-4xl font-bold text-white mb-4">
-        باقات Mizan
-      </h1>
-
-      <p class="text-slate-300 max-w-3xl mx-auto leading-relaxed">
-        الباقة تحدد مستوى الصلاحيات وعمق التحليل، أما نوع المستخدم فيحدد طريقة تفكير Mizan. يمكن لأي مستخدم اختيار أي باقة، وتغيير نوع المستخدم من الملف الشخصي.
-      </p>
-
-      <div class="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-300 text-sm">
-        جميع الباقات مجانية ومفتوحة حاليًا أثناء التطوير
-      </div>
+      <h1 class="text-4xl font-bold mb-3">باقات Mizan</h1>
+      <p class="text-slate-400">الباقات مفعّلة داخل النظام من حيث الحدود والصلاحيات، وسيتم ربط الدفع لاحقًا.</p>
     </div>
 
-    {% if request.query_params.get("error") %}
-    <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm max-w-3xl mx-auto">
-      حدث خطأ أثناء تغيير الباقة.
+    <div class="grid md:grid-cols-4 gap-5">
+      {% set plans = [
+        ('المجانية','free','0$','3 تحليلات شهريًا','قضية واحدة','مستند واحد'),
+        ('الأفراد','individual','قريبًا','50 تحليلًا','5 قضايا','20 مستندًا'),
+        ('الأعمال','business','قريبًا','200 تحليل','20 قضية','100 مستند'),
+        ('المحامون','lawyer','قريبًا','تحليلات موسعة','عدد قضايا مرتفع','ملاحظات ومستجدات')
+      ] %}
+      {% for name, key, price, a, c, d in plans %}
+      <div class="glass-card rounded-3xl border {% if user and user.plan == key %}border-gold-400/50{% else %}border-white/10{% endif %} p-6">
+        <div class="text-sm text-gold-400 mb-2">{{ name }}</div>
+        <div class="text-3xl font-bold mb-6">{{ price }}</div>
+        <ul class="space-y-3 text-sm text-slate-300 mb-6">
+          <li>• {{ a }}</li>
+          <li>• {{ c }}</li>
+          <li>• {{ d }}</li>
+          <li>• تحليل حسب الدولة ونوع القضية</li>
+        </ul>
+        {% if user and user.plan == key %}
+          <div class="text-center rounded-xl bg-gold-400/10 border border-gold-400/20 text-gold-400 py-3">باقتك الحالية</div>
+        {% else %}
+          <button disabled class="w-full rounded-xl bg-white/10 text-slate-400 py-3 cursor-not-allowed">الدفع قريبًا</button>
+        {% endif %}
+      </div>
+      {% endfor %}
     </div>
-    {% endif %}
-
-    {% if not user %}
-    <div class="mb-8 rounded-2xl border border-gold-400/20 bg-gold-400/10 p-5 text-slate-300 text-sm leading-relaxed max-w-3xl mx-auto text-center">
-      يجب تسجيل الدخول لاختيار الباقة.
-      <a href="/login" class="text-gold-400 hover:text-gold-300 font-bold">تسجيل الدخول</a>
-    </div>
-    {% endif %}
-
-    <div class="grid md:grid-cols-2 xl:grid-cols-5 gap-6">
-
-      <!-- Free -->
-      <div class="glass-card rounded-3xl border border-white/10 p-6 flex flex-col">
-        <div class="mb-5">
-          <h2 class="text-xl font-bold text-white mb-2">Free</h2>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            للتجربة الأولى وفهم عام للحالة القانونية.
-          </p>
-        </div>
-
-        <div class="mb-6">
-          <span class="text-3xl font-bold text-gold-400">مجانية</span>
-          <span class="text-slate-400 text-sm"> / حاليًا</span>
-        </div>
-
-        <ul class="space-y-3 text-sm text-slate-300 mb-6 flex-1">
-          <li>تحليل مختصر وحذر.</li>
-          <li>شرح عام للموقف.</li>
-          <li>تنبيه بالمخاطر الأساسية.</li>
-          <li>مناسبة للتجربة.</li>
-        </ul>
-
-        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-xs text-slate-400 mb-5 leading-relaxed">
-          ينصح بها للتجربة أو للاستخدام الخفيف، لكنها ليست مخصصة لفئة معينة.
-        </div>
-
-        {% if user %}
-        <form method="post" action="/pricing/select-plan">
-          <input type="hidden" name="plan" value="free">
-          <button
-            type="submit"
-            class="w-full rounded-xl px-5 py-3 font-bold transition {% if current_plan == 'free' %}bg-gold-500 text-navy-950{% else %}bg-white/10 text-white hover:bg-white/15{% endif %}"
-          >
-            {% if current_plan == 'free' %}الباقة الحالية{% else %}اختيار الباقة{% endif %}
-          </button>
-        </form>
-        {% endif %}
-      </div>
-
-      <!-- Basic -->
-      <div class="glass-card rounded-3xl border border-white/10 p-6 flex flex-col">
-        <div class="mb-5">
-          <h2 class="text-xl font-bold text-white mb-2">Basic</h2>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            تحليل أوضح ومنظم أكثر للاستخدام اليومي.
-          </p>
-        </div>
-
-        <div class="mb-6">
-          <span class="text-3xl font-bold text-gold-400">مجانية</span>
-          <span class="text-slate-400 text-sm"> / حاليًا</span>
-        </div>
-
-        <ul class="space-y-3 text-sm text-slate-300 mb-6 flex-1">
-          <li>تحليل منظم أكثر من Free.</li>
-          <li>خطوات عملية أوضح.</li>
-          <li>مخاطر ومستندات أساسية.</li>
-          <li>مناسب للاستخدام الفردي أو المهني الخفيف.</li>
-        </ul>
-
-        <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-xs text-slate-400 mb-5 leading-relaxed">
-          ينصح بها للأفراد أو طلاب القانون أو المستخدمين الجدد.
-        </div>
-
-        {% if user %}
-        <form method="post" action="/pricing/select-plan">
-          <input type="hidden" name="plan" value="basic">
-          <button
-            type="submit"
-            class="w-full rounded-xl px-5 py-3 font-bold transition {% if current_plan == 'basic' %}bg-gold-500 text-navy-950{% else %}bg-white/10 text-white hover:bg-white/15{% endif %}"
-          >
-            {% if current_plan == 'basic' %}الباقة الحالية{% else %}اختيار الباقة{% endif %}
-          </button>
-        </form>
-        {% endif %}
-      </div>
-
-      <!-- Pro -->
-      <div class="glass-card rounded-3xl border border-gold-400/20 p-6 flex flex-col">
-        <div class="mb-5">
-          <h2 class="text-xl font-bold text-white mb-2">Pro</h2>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            تحليل أعمق مع مخاطر ومستندات وخطوات تفصيلية.
-          </p>
-        </div>
-
-        <div class="mb-6">
-          <span class="text-3xl font-bold text-gold-400">مجانية</span>
-          <span class="text-slate-400 text-sm"> / حاليًا</span>
-        </div>
-
-        <ul class="space-y-3 text-sm text-slate-300 mb-6 flex-1">
-          <li>تحليل موسع ومنظم.</li>
-          <li>تفصيل للمخاطر والثغرات.</li>
-          <li>اقتراح خطوات عملية.</li>
-          <li>ملخص جيد للمحامي.</li>
-        </ul>
-
-        <div class="rounded-xl bg-gold-400/10 border border-gold-400/20 p-3 text-xs text-gold-200 mb-5 leading-relaxed">
-          ينصح بها للمستخدمين الجادين، المحامين، الشركات الصغيرة، والباحثين.
-        </div>
-
-        {% if user %}
-        <form method="post" action="/pricing/select-plan">
-          <input type="hidden" name="plan" value="pro">
-          <button
-            type="submit"
-            class="w-full rounded-xl px-5 py-3 font-bold transition {% if current_plan == 'pro' %}bg-gold-500 text-navy-950{% else %}bg-white/10 text-white hover:bg-white/15{% endif %}"
-          >
-            {% if current_plan == 'pro' %}الباقة الحالية{% else %}اختيار الباقة{% endif %}
-          </button>
-        </form>
-        {% endif %}
-      </div>
-
-      <!-- Premium -->
-      <div class="glass-card rounded-3xl border border-gold-400/30 p-6 flex flex-col relative">
-        <div class="absolute top-4 left-4 rounded-full bg-gold-500 text-navy-950 text-xs font-bold px-3 py-1">
-          متقدمة
-        </div>
-
-        <div class="mb-5">
-          <h2 class="text-xl font-bold text-white mb-2">Premium</h2>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            تحليل متقدم مع استراتيجية وتفصيل عميق حسب نوع المستخدم.
-          </p>
-        </div>
-
-        <div class="mb-6">
-          <span class="text-3xl font-bold text-gold-400">مجانية</span>
-          <span class="text-slate-400 text-sm"> / حاليًا</span>
-        </div>
-
-        <ul class="space-y-3 text-sm text-slate-300 mb-6 flex-1">
-          <li>تحليل عميق وشامل.</li>
-          <li>استراتيجية أولية.</li>
-          <li>دفوع أو مخاطر متقدمة حسب الشخصية.</li>
-          <li>ملاحظات دقيقة حول الثقة والدقة القانونية.</li>
-        </ul>
-
-        <div class="rounded-xl bg-gold-400/10 border border-gold-400/20 p-3 text-xs text-gold-200 mb-5 leading-relaxed">
-          ينصح بها للمحامين، الشركات، القضاة، والباحثين، ويمكن للأفراد استخدامها أيضًا.
-        </div>
-
-        {% if user %}
-        <form method="post" action="/pricing/select-plan">
-          <input type="hidden" name="plan" value="premium">
-          <button
-            type="submit"
-            class="w-full rounded-xl px-5 py-3 font-bold transition {% if current_plan == 'premium' %}bg-gold-500 text-navy-950{% else %}bg-white/10 text-white hover:bg-white/15{% endif %}"
-          >
-            {% if current_plan == 'premium' %}الباقة الحالية{% else %}اختيار الباقة{% endif %}
-          </button>
-        </form>
-        {% endif %}
-      </div>
-
-      <!-- Enterprise -->
-      <div class="glass-card rounded-3xl border border-purple-400/30 p-6 flex flex-col">
-        <div class="mb-5">
-          <h2 class="text-xl font-bold text-white mb-2">Enterprise</h2>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            للشركات والمكاتب والفرق التي تحتاج صلاحيات أعلى وتقارير أوسع.
-          </p>
-        </div>
-
-        <div class="mb-6">
-          <span class="text-3xl font-bold text-gold-400">مجانية</span>
-          <span class="text-slate-400 text-sm"> / حاليًا</span>
-        </div>
-
-        <ul class="space-y-3 text-sm text-slate-300 mb-6 flex-1">
-          <li>أعلى مستوى تحليل.</li>
-          <li>مناسب للفرق والمؤسسات.</li>
-          <li>توسيع في المخاطر والامتثال.</li>
-          <li>جاهز لاحقًا للتقارير والفرق.</li>
-        </ul>
-
-        <div class="rounded-xl bg-purple-400/10 border border-purple-400/20 p-3 text-xs text-purple-200 mb-5 leading-relaxed">
-          ينصح بها للشركات والمكاتب القانونية، ويمكن لأي مستخدم اختيارها أثناء التطوير.
-        </div>
-
-        {% if user %}
-        <form method="post" action="/pricing/select-plan">
-          <input type="hidden" name="plan" value="enterprise">
-          <button
-            type="submit"
-            class="w-full rounded-xl px-5 py-3 font-bold transition {% if current_plan == 'enterprise' %}bg-gold-500 text-navy-950{% else %}bg-white/10 text-white hover:bg-white/15{% endif %}"
-          >
-            {% if current_plan == 'enterprise' %}الباقة الحالية{% else %}اختيار الباقة{% endif %}
-          </button>
-        </form>
-        {% endif %}
-      </div>
-
-    </div>
-
-    <div class="mt-10 rounded-2xl border border-white/10 bg-white/5 p-5 text-slate-300 text-sm leading-relaxed">
-      <strong class="text-gold-300">مهم:</strong>
-      الباقة لا تحدد شخصية المستخدم. يمكنك اختيار أعلى باقة وأنت فرد عادي، وسيبقى الرد بأسلوب الأفراد إذا كان نوع المستخدم في ملفك الشخصي "فرد". ويمكنك تغيير نوع المستخدم من الملف الشخصي لتغيير طريقة التفكير.
-    </div>
-
   </div>
 </section>
 {% endblock %}

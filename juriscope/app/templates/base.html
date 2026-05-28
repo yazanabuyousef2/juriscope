@@ -11,7 +11,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="icon" type="image/png" href="/static/images/mizan-logo.png">
   <link rel="stylesheet" href="/static/css/style.css" />
-
   <script>
     tailwind.config = {
       theme: {
@@ -30,33 +29,11 @@
     };
   </script>
 </head>
-
 <body class="font-arabic bg-navy-950 text-white min-h-screen antialiased">
-
-  {% set staff_mode = is_staff_mode or (user and user.get("is_staff_mode")) %}
 
   <nav class="fixed top-0 right-0 left-0 z-50 border-b border-white/5" id="navbar">
     <div class="backdrop-blur-xl bg-navy-950/85">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        {% if staff_mode %}
-        <div class="border-b border-yellow-400/20 bg-yellow-400/10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
-          <div class="max-w-7xl mx-auto py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div class="text-xs sm:text-sm text-yellow-100">
-              أنت داخل الموقع بوضع الموظف الداخلي غير المحدود —
-              <span class="font-semibold text-yellow-300">{{ user.full_name if user else "" }}</span>
-            </div>
-
-            <a
-              href="/internal/dashboard"
-              class="inline-flex items-center justify-center rounded-lg border border-yellow-400/30 bg-yellow-400/10 px-3 py-1.5 text-xs text-yellow-100 hover:bg-yellow-400/20 transition"
-            >
-              العودة للوحة التحكم
-            </a>
-          </div>
-        </div>
-        {% endif %}
-
         <div class="flex items-center justify-between h-16">
 
           <a href="/" class="flex items-center gap-3 group">
@@ -72,39 +49,11 @@
             <a href="/features" class="nav-link px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">المميزات</a>
             <a href="/use-cases" class="nav-link px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">حالات الاستخدام</a>
             <a href="/pricing" class="nav-link px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">الباقات</a>
-
             {% if user %}
-              {% if staff_mode %}
-                <a href="/assistant" class="mr-2 px-5 py-2 rounded-lg text-sm font-semibold bg-gold-400 text-navy-950 hover:bg-gold-500 transition-all shadow-lg shadow-gold-400/20">
-                  المساعد القانوني
-                </a>
-
-                <a href="/internal/support-tickets" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">
-                  تذاكر الدعم
-                </a>
-
-                <a href="/internal/dashboard" class="px-4 py-2 rounded-lg text-sm text-yellow-300 hover:text-white hover:bg-yellow-500/10 transition-all">
-                  لوحة التحكم
-                </a>
-
-                <a href="/logout" class="px-4 py-2 rounded-lg text-sm text-red-300 hover:text-white hover:bg-red-500/10 transition-all">
-                  خروج
-                </a>
-              {% else %}
-                <a href="/cases" class="nav-link px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">قضاياي</a>
-
-                <a href="/assistant" class="mr-2 px-5 py-2 rounded-lg text-sm font-semibold bg-gold-400 text-navy-950 hover:bg-gold-500 transition-all shadow-lg shadow-gold-400/20">
-                  المساعد القانوني
-                </a>
-
-                <a href="/support" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">
-                  الدعم
-                </a>
-
-                <a href="/profile" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">ملفي الشخصي</a>
-
-                <a href="/logout" class="px-4 py-2 rounded-lg text-sm text-red-300 hover:text-white hover:bg-red-500/10 transition-all">خروج</a>
-              {% endif %}
+              <a href="/cases" class="nav-link px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">قضاياي</a>
+              <a href="/assistant" class="mr-2 px-5 py-2 rounded-lg text-sm font-semibold bg-gold-400 text-navy-950 hover:bg-gold-500 transition-all shadow-lg shadow-gold-400/20">المساعد القانوني</a>
+              <a href="/profile" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">ملفي الشخصي</a>
+              <a href="/logout" class="px-4 py-2 rounded-lg text-sm text-red-300 hover:text-white hover:bg-red-500/10 transition-all">خروج</a>
             {% else %}
               <a href="/login" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">تسجيل الدخول</a>
               <a href="/register" class="mr-2 px-5 py-2 rounded-lg text-sm font-semibold bg-gold-400 text-navy-950 hover:bg-gold-500 transition-all shadow-lg shadow-gold-400/20">إنشاء حساب</a>
@@ -124,32 +73,22 @@
             <a href="/features" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">المميزات</a>
             <a href="/use-cases" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">حالات الاستخدام</a>
             <a href="/pricing" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">الباقات</a>
-
             {% if user %}
-              {% if staff_mode %}
-                <a href="/assistant" class="px-4 py-2 rounded-lg text-sm text-gold-400 hover:bg-white/5">المساعد القانوني</a>
-                <a href="/support" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">تجربة الدعم</a>
-                <a href="/internal/dashboard" class="px-4 py-2 rounded-lg text-sm text-yellow-300 hover:bg-yellow-500/10">لوحة التحكم</a>
-                <a href="/logout" class="px-4 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10">خروج</a>
-              {% else %}
-                <a href="/assistant" class="px-4 py-2 rounded-lg text-sm text-gold-400 hover:bg-white/5">المساعد القانوني</a>
-                <a href="/cases" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">قضاياي</a>
-                <a href="/support" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">الدعم</a>
-                <a href="/profile" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">ملفي الشخصي</a>
-                <a href="/logout" class="px-4 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10">خروج</a>
-              {% endif %}
+              <a href="/assistant" class="px-4 py-2 rounded-lg text-sm text-gold-400 hover:bg-white/5">المساعد القانوني</a>
+              <a href="/cases" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">قضاياي</a>
+              <a href="/profile" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">ملفي الشخصي</a>
+              <a href="/logout" class="px-4 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10">خروج</a>
             {% else %}
               <a href="/login" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5">تسجيل الدخول</a>
               <a href="/register" class="px-4 py-2 rounded-lg text-sm text-gold-400 hover:bg-white/5">إنشاء حساب</a>
             {% endif %}
           </div>
         </div>
-
       </div>
     </div>
   </nav>
 
-  <main class="{% if staff_mode %}pt-28{% else %}pt-16{% endif %}">
+  <main class="pt-16">
     {% block content %}{% endblock %}
   </main>
 
@@ -164,7 +103,6 @@
               <span class="text-xs text-gold-400">القانون بين يديك</span>
             </div>
           </div>
-
           <p class="text-slate-400 text-sm leading-relaxed max-w-xs">
             مساعد قانوني ذكي يساعدك على فهم موقفك القانوني، إدارة قضاياك، وتحليل مستنداتك القانونية بوضوح وجاهزية.
           </p>
@@ -199,24 +137,17 @@
 
   <script>
     const mobileBtn = document.getElementById('mobile-menu-btn');
-
     if (mobileBtn) {
       mobileBtn.addEventListener('click', () => {
         document.getElementById('mobile-menu').classList.toggle('hidden');
       });
     }
-
     window.addEventListener('scroll', () => {
       const navbar = document.getElementById('navbar');
       const inner = navbar ? navbar.querySelector('div') : null;
-
       if (!inner) return;
-
-      if (window.scrollY > 20) {
-        inner.classList.add('bg-navy-950/95');
-      } else {
-        inner.classList.remove('bg-navy-950/95');
-      }
+      if (window.scrollY > 20) inner.classList.add('bg-navy-950/95');
+      else inner.classList.remove('bg-navy-950/95');
     });
   </script>
 

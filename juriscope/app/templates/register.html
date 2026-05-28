@@ -1,180 +1,24 @@
 {% extends "base.html" %}
-
-{% block title %}إنشاء حساب | Mizan{% endblock %}
-
+{% block title %}إنشاء حساب – Mizan{% endblock %}
 {% block content %}
-{% set countries = countries|default({
-  'الأردن': '+962',
-  'السعودية': '+966',
-  'الإمارات': '+971',
-  'مصر': '+20',
-  'العراق': '+964',
-  'قطر': '+974',
-  'الكويت': '+965',
-  'البحرين': '+973',
-  'عُمان': '+968'
-}) %}
-
-{% set user_roles = user_roles|default({
-  'individual': 'فرد / مستخدم عادي',
-  'lawyer': 'محامي',
-  'company': 'شركة / رجل أعمال',
-  'judge': 'قاضٍ',
-  'law_student': 'طالب قانون',
-  'legal_researcher': 'باحث قانوني',
-  'government_employee': 'موظف حكومي'
-}) %}
-
-<section class="min-h-screen py-12 px-4">
-  <div class="max-w-xl mx-auto">
-
+<section class="min-h-screen flex items-center justify-center px-4 py-16">
+  <div class="w-full max-w-md glass-card border border-white/10 rounded-3xl p-8">
     <div class="text-center mb-8">
-      <h1 class="text-3xl sm:text-4xl font-bold text-white mb-3">
-        إنشاء حساب في Mizan
-      </h1>
-      <p class="text-slate-300 leading-relaxed">
-        اختر الدولة القانونية ونوع المستخدم. سيتم تخصيص إجابات Mizan حسب الدولة ونوع الحساب.
-      </p>
+      <img src="/static/images/mizan-logo.png" class="w-20 h-20 object-contain mx-auto mb-4">
+      <h1 class="text-2xl font-bold">إنشاء حساب جديد</h1>
+      <p class="text-sm text-slate-400 mt-2">ابدأ بالباقة المجانية واحفظ تحليلاتك وقضاياك.</p>
     </div>
-
-    <div class="glass-card rounded-3xl border border-white/10 p-6 md:p-8">
-
-      {% if error %}
-      <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
-        {{ error }}
-      </div>
-      {% endif %}
-
-      <form method="post" action="/register" class="space-y-5">
-
-        <div>
-          <label class="block text-sm text-slate-300 mb-2">الاسم الكامل</label>
-          <input
-            type="text"
-            name="full_name"
-            required
-            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
-            placeholder="اكتب اسمك الكامل"
-          >
-        </div>
-
-        <div>
-          <label class="block text-sm text-slate-300 mb-2">البريد الإلكتروني</label>
-          <input
-            type="email"
-            name="email"
-            required
-            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
-            placeholder="example@email.com"
-          >
-        </div>
-
-        <div>
-          <label class="block text-sm text-slate-300 mb-2">الدولة القانونية للحساب</label>
-          <select
-            name="country"
-            required
-            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
-          >
-            {% for country, code in countries.items() %}
-            <option value="{{ country }}" class="text-black">
-              {{ country }}
-            </option>
-            {% endfor %}
-          </select>
-          <p class="mt-2 text-xs text-slate-400 leading-relaxed">
-            هذه الدولة ستحدد القوانين والأسعار وطريقة التحليل. لا يمكن تغييرها من الحساب لاحقًا.
-          </p>
-        </div>
-
-        <div>
-          <label class="block text-sm text-slate-300 mb-2">نوع المستخدم</label>
-          <select
-            name="user_role"
-            required
-            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
-          >
-            {% for role_key, role_label in user_roles.items() %}
-            <option value="{{ role_key }}" class="text-black">
-              {{ role_label }}
-            </option>
-            {% endfor %}
-          </select>
-          <p class="mt-2 text-xs text-slate-400 leading-relaxed">
-            ستختلف طريقة الرد حسب نوع المستخدم: فرد، محامي، شركة، قاضٍ، طالب قانون، أو باحث.
-          </p>
-        </div>
-
-        <div class="grid md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">مقدمة الهاتف</label>
-            <select
-              name="phone_country_code"
-              required
-              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
-            >
-              {% for country, code in countries.items() %}
-              <option value="{{ code }}" class="text-black">
-                {{ code }}
-              </option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="md:col-span-2">
-            <label class="block text-sm text-slate-300 mb-2">رقم الهاتف</label>
-            <input
-              type="tel"
-              name="phone"
-              required
-              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
-              placeholder="مثال: 799999999"
-            >
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-sm text-slate-300 mb-2">كلمة المرور</label>
-          <input
-            type="password"
-            name="password"
-            required
-            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
-            placeholder="كلمة مرور قوية"
-          >
-          <p class="mt-2 text-xs text-slate-400 leading-relaxed">
-            يجب أن تحتوي على 8 أحرف على الأقل، حرف كبير، حرف صغير، رقم، ورمز خاص مثل @ أو # أو $.
-          </p>
-        </div>
-
-        <div>
-          <label class="block text-sm text-slate-300 mb-2">تأكيد كلمة المرور</label>
-          <input
-            type="password"
-            name="confirm_password"
-            required
-            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
-            placeholder="أعد كتابة كلمة المرور"
-          >
-        </div>
-
-        <div class="rounded-xl border border-gold-400/20 bg-gold-400/10 p-4 text-xs text-slate-300 leading-relaxed">
-          في هذه المرحلة يتم حفظ رقم الهاتف والدولة بدون OTP حقيقي. لاحقًا سيتم تفعيل التحقق عبر SMS أو WhatsApp.
-        </div>
-
-        <button
-          type="submit"
-          class="w-full rounded-xl bg-gold-500 px-6 py-3 text-navy-950 font-bold hover:bg-gold-400 transition"
-        >
-          إنشاء الحساب
-        </button>
-      </form>
-
-      <div class="mt-6 text-center text-sm text-slate-400">
-        لديك حساب بالفعل؟
-        <a href="/login" class="text-gold-400 hover:text-gold-300">تسجيل الدخول</a>
-      </div>
-    </div>
+    {% if error %}
+      <div class="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm p-3">{{ error }}</div>
+    {% endif %}
+    <form method="post" class="space-y-4">
+      <input name="full_name" required class="form-input" placeholder="الاسم الكامل">
+      <input name="email" type="email" required class="form-input" placeholder="البريد الإلكتروني">
+      <input name="password" type="password" required class="form-input" placeholder="كلمة المرور">
+      <input name="confirm_password" type="password" required class="form-input" placeholder="تأكيد كلمة المرور">
+      <button class="w-full py-3 rounded-xl bg-gold-400 text-navy-950 font-semibold hover:bg-gold-500 transition-all">إنشاء الحساب</button>
+    </form>
+    <p class="text-center text-sm text-slate-400 mt-6">لديك حساب؟ <a href="/login" class="text-gold-400 hover:text-gold-300">تسجيل الدخول</a></p>
   </div>
 </section>
 {% endblock %}

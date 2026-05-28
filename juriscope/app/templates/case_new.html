@@ -50,35 +50,45 @@
           >
         </div>
 
-        <div>
-          <label class="block text-sm text-slate-300 mb-2">الدولة القانونية للحساب</label>
-          <div class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
-            {{ user.country }}
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">الدولة</label>
+            <select
+              name="country"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+            >
+              <option value="الأردن" class="text-black">الأردن</option>
+              <option value="السعودية" class="text-black">السعودية</option>
+              <option value="الإمارات" class="text-black">الإمارات</option>
+              <option value="مصر" class="text-black">مصر</option>
+              <option value="العراق" class="text-black">العراق</option>
+              <option value="قطر" class="text-black">قطر</option>
+              <option value="الكويت" class="text-black">الكويت</option>
+              <option value="البحرين" class="text-black">البحرين</option>
+              <option value="عُمان" class="text-black">عُمان</option>
+            </select>
           </div>
-          <p class="mt-2 text-xs text-slate-400">
-            يتم إنشاء القضية تلقائيًا حسب دولة الحساب، ولا يمكن اختيار دولة مختلفة من داخل القضية.
-          </p>
-        </div>
 
-        <div>
-          <label class="block text-sm text-slate-300 mb-2">نوع القضية</label>
-          <select
-            name="case_type"
-            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
-          >
-            <option value="مدني" class="text-black">مدني</option>
-            <option value="تجاري" class="text-black">تجاري</option>
-            <option value="عقود" class="text-black">عقود</option>
-            <option value="شركات" class="text-black">شركات</option>
-            <option value="عمالي" class="text-black">عمالي</option>
-            <option value="إيجارات" class="text-black">إيجارات</option>
-            <option value="أحوال شخصية" class="text-black">أحوال شخصية</option>
-            <option value="جنائي" class="text-black">جنائي</option>
-            <option value="شيكات ومطالبات مالية" class="text-black">شيكات ومطالبات مالية</option>
-            <option value="ملكية فكرية" class="text-black">ملكية فكرية</option>
-            <option value="إداري" class="text-black">إداري</option>
-            <option value="أخرى" class="text-black">أخرى</option>
-          </select>
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">نوع القضية</label>
+            <select
+              name="case_type"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+            >
+              <option value="مدني" class="text-black">مدني</option>
+              <option value="تجاري" class="text-black">تجاري</option>
+              <option value="عقود" class="text-black">عقود</option>
+              <option value="شركات" class="text-black">شركات</option>
+              <option value="عمالي" class="text-black">عمالي</option>
+              <option value="إيجارات" class="text-black">إيجارات</option>
+              <option value="أحوال شخصية" class="text-black">أحوال شخصية</option>
+              <option value="جنائي" class="text-black">جنائي</option>
+              <option value="شيكات ومطالبات مالية" class="text-black">شيكات ومطالبات مالية</option>
+              <option value="ملكية فكرية" class="text-black">ملكية فكرية</option>
+              <option value="إداري" class="text-black">إداري</option>
+              <option value="أخرى" class="text-black">أخرى</option>
+            </select>
+          </div>
         </div>
 
         <div>
