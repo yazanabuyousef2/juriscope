@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>إعدادات النظام | Mizan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.13), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(80, 70, 180, 0.12), transparent 30%),
+        #070b16;
+      min-height: 100vh;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    select option {
+      color: #000;
+    }
+  </style>
+</head>
+
+<body class="text-white">
+
+  <header class="border-b border-white/10 bg-black/20">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+
+      <div>
+        <h1 class="text-xl font-bold">Mizan Internal</h1>
+        <p class="text-xs text-slate-400 mt-1">
+          إعدادات النظام —
+          <span class="text-yellow-300">{{ staff.full_name }}</span>
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/internal/dashboard" class="text-sm text-slate-300 hover:text-yellow-300">
+          لوحة التحكم
+        </a>
+
+        <a href="/logout" class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition">
+          تسجيل الخروج
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-10">
+
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold mb-3">
+        إعدادات النظام
+      </h2>
+
+      <p class="text-slate-400 leading-relaxed max-w-3xl">
+        من هنا يمكنك إدارة الإعدادات العامة للنظام. بعض الإعدادات ستُربط لاحقًا مباشرة بسلوك المساعد والواجهة.
+      </p>
+    </div>
+
+    {% if error %}
+    <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
+      {% if error == "setting_not_found" %}
+        الإعداد غير موجود.
+      {% else %}
+        حدث خطأ أثناء تنفيذ العملية.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
+      {% if success == "updated" %}
+        تم تحديث الإعداد بنجاح.
+      {% elif success == "reset" %}
+        تم استرجاع الإعدادات الافتراضية بنجاح.
+      {% else %}
+        تمت العملية بنجاح.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="flex justify-end mb-6">
+      {% if staff.role == "superadmin" %}
+      <form method="post" action="/internal/settings/reset-defaults" onsubmit="return confirm('هل أنت متأكد من استرجاع الإعدادات الافتراضية؟');">
+        <button
+          type="submit"
+          class="rounded-xl bg-red-500/15 border border-red-400/30 px-5 py-3 text-sm text-red-200 hover:bg-red-500/25 transition"
+        >
+          استرجاع الإعدادات الافتراضية
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    <section class="grid lg:grid-cols-2 gap-6">
+
+      {% for item in settings %}
+      <div class="glass-card rounded-3xl border border-white/10 p-6">
+
+        <div class="mb-5">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h3 class="text-xl font-bold text-white">
+                {{ item.label or item.setting_key }}
+              </h3>
+
+              <p class="text-xs text-slate-500 mt-1">
+                Key: {{ item.setting_key }}
+              </p>
+            </div>
+
+            <span class="rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs text-slate-300">
+              {{ item.setting_type }}
+            </span>
+          </div>
+
+          {% if item.description %}
+          <p class="text-sm text-slate-400 mt-3 leading-relaxed">
+            {{ item.description }}
+          </p>
+          {% endif %}
+        </div>
+
+        <form method="post" action="/internal/settings/update" class="space-y-4">
+          <input type="hidden" name="setting_key" value="{{ item.setting_key }}">
+
+          {% if item.setting_type == "textarea" %}
+          <textarea
+            name="setting_value"
+            rows="5"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+          >{{ item.setting_value }}</textarea>
+
+          {% elif item.setting_type == "number" %}
+          <input
+            type="number"
+            name="setting_value"
+            value="{{ item.setting_value }}"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+          >
+
+          {% elif item.setting_type == "select" %}
+          <select
+            name="setting_value"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+          >
+            <option value="on" {% if item.setting_value == "on" %}selected{% endif %}>مفعّل</option>
+            <option value="off" {% if item.setting_value == "off" %}selected{% endif %}>معطّل</option>
+          </select>
+
+          {% else %}
+          <input
+            type="text"
+            name="setting_value"
+            value="{{ item.setting_value }}"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+          >
+          {% endif %}
+
+          <div class="flex items-center justify-between gap-4">
+            <div class="text-xs text-slate-500">
+              آخر تحديث:
+              {{ item.updated_at }}
+            </div>
+
+            <button
+              type="submit"
+              class="rounded-xl bg-yellow-500 px-5 py-2 text-slate-950 text-sm font-bold hover:bg-yellow-400 transition"
+            >
+              حفظ
+            </button>
+          </div>
+        </form>
+
+      </div>
+      {% endfor %}
+
+      {% if settings|length == 0 %}
+      <div class="glass-card rounded-3xl border border-white/10 p-8 text-center text-slate-400 lg:col-span-2">
+        لا توجد إعدادات بعد.
+      </div>
+      {% endif %}
+
+    </section>
+
+  </main>
+
+</body>
+</html>

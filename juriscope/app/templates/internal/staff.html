@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>إدارة الموظفين | Mizan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.13), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(80, 70, 180, 0.12), transparent 30%),
+        #070b16;
+      min-height: 100vh;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    select option {
+      color: #000;
+    }
+  </style>
+</head>
+
+<body class="text-white">
+
+  <header class="border-b border-white/10 bg-black/20">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+
+      <div>
+        <h1 class="text-xl font-bold">Mizan Internal</h1>
+        <p class="text-xs text-slate-400 mt-1">
+          إدارة الموظفين —
+          <span class="text-yellow-300">{{ staff.full_name }}</span>
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/internal/dashboard" class="text-sm text-slate-300 hover:text-yellow-300">
+          لوحة التحكم
+        </a>
+
+        <a href="/logout" class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition">
+          تسجيل الخروج
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-10">
+
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold mb-3">
+        إدارة الموظفين
+      </h2>
+
+      <p class="text-slate-400 leading-relaxed max-w-3xl">
+        هذه الصفحة مخصصة للـ Super Admin فقط. يمكنك إضافة موظفين، تغيير أدوارهم، تفعيل أو تعطيل الحسابات، تحديث كلمات المرور، وحذف الموظفين.
+      </p>
+    </div>
+
+    {% if error %}
+    <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
+      {% if error == "invalid_role" %}
+        الدور المختار غير صحيح.
+      {% elif error == "missing_fields" %}
+        يرجى تعبئة جميع الحقول.
+      {% elif error == "weak_password" %}
+        كلمة المرور ضعيفة. يجب أن تحتوي على 8 أحرف على الأقل، حرف كبير، حرف صغير، رقم، ورمز خاص.
+      {% elif error == "email_exists" %}
+        هذا البريد الإلكتروني مستخدم مسبقًا في حساب موظف.
+      {% elif error == "not_found" %}
+        الموظف غير موجود.
+      {% elif error == "cannot_disable_self" %}
+        لا يمكنك تعطيل حسابك الحالي.
+      {% elif error == "cannot_disable_superadmin" %}
+        لا يمكن تعطيل حساب الـ Super Admin.
+      {% elif error == "cannot_change_self_role" %}
+        لا يمكنك تغيير دور حسابك الحالي.
+      {% elif error == "cannot_change_superadmin" %}
+        لا يمكن تغيير دور حساب الـ Super Admin.
+      {% elif error == "cannot_create_superadmin" %}
+        لا يمكن إنشاء حساب Super Admin إضافي.
+      {% elif error == "cannot_assign_superadmin" %}
+        لا يمكن تحويل أي موظف إلى Super Admin.
+      {% elif error == "cannot_delete_self" %}
+        لا يمكنك حذف حسابك الحالي.
+      {% elif error == "cannot_delete_superadmin" %}
+        لا يمكن حذف حساب الـ Super Admin.
+      {% elif error == "cannot_delete_has_data" %}
+        لا يمكن حذف هذا الموظف لأن لديه بيانات مرتبطة داخل النظام. يمكنك تعطيله بدلًا من حذفه.
+      {% else %}
+        حدث خطأ أثناء تنفيذ العملية.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
+      {% if success == "created" %}
+        تم إنشاء الموظف بنجاح.
+      {% elif success == "role_updated" %}
+        تم تحديث دور الموظف بنجاح.
+      {% elif success == "status_updated" %}
+        تم تحديث حالة الموظف بنجاح.
+      {% elif success == "password_updated" %}
+        تم تحديث كلمة مرور الموظف بنجاح.
+      {% elif success == "deleted" %}
+        تم حذف الموظف بنجاح.
+      {% else %}
+        تمت العملية بنجاح.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <section class="grid lg:grid-cols-3 gap-6">
+
+      <!-- Create Staff -->
+      <div class="glass-card rounded-3xl border border-white/10 p-6 lg:col-span-1">
+        <h3 class="text-xl font-bold mb-5">إضافة موظف جديد</h3>
+
+        <form method="post" action="/internal/staff/create" class="space-y-5">
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">الاسم الكامل</label>
+            <input
+              type="text"
+              name="full_name"
+              required
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">البريد الإلكتروني</label>
+            <input
+              type="email"
+              name="email"
+              required
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">كلمة المرور</label>
+            <input
+              type="password"
+              name="password"
+              required
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            >
+            <p class="text-xs text-slate-500 mt-2">
+              8 أحرف على الأقل + حرف كبير + حرف صغير + رقم + رمز.
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">الدور</label>
+            <select
+              name="role"
+              required
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            >
+              {% for role_key, role_label in creatable_roles.items() %}
+              <option value="{{ role_key }}">
+                {{ role_label }}
+              </option>
+              {% endfor %}
+            </select>
+
+            <p class="text-xs text-slate-500 mt-2">
+              لا يمكن إنشاء Super Admin إضافي.
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-xl bg-yellow-500 px-6 py-3 text-slate-950 font-bold hover:bg-yellow-400 transition"
+          >
+            إضافة الموظف
+          </button>
+        </form>
+      </div>
+
+      <!-- Staff List -->
+      <div class="glass-card rounded-3xl border border-white/10 p-6 lg:col-span-2">
+        <h3 class="text-xl font-bold mb-5">قائمة الموظفين</h3>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-white/10 text-slate-400">
+                <th class="py-3 text-right">الموظف</th>
+                <th class="py-3 text-right">الدور</th>
+                <th class="py-3 text-right">الحالة</th>
+                <th class="py-3 text-right">آخر دخول</th>
+                <th class="py-3 text-right">إجراءات</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for item in staff_users %}
+              <tr class="border-b border-white/5 align-top">
+                <td class="py-4">
+                  <div class="font-semibold text-white">
+                    {{ item.full_name }}
+                  </div>
+                  <div class="text-xs text-slate-500 mt-1">
+                    {{ item.email }}
+                  </div>
+
+                  {% if item.id == staff.id %}
+                  <div class="text-xs text-yellow-300 mt-2">
+                    حسابك الحالي
+                  </div>
+                  {% endif %}
+                </td>
+
+                <td class="py-4">
+                  {% if item.role == "superadmin" %}
+                    <span class="inline-flex rounded-full bg-yellow-500/10 border border-yellow-400/30 px-3 py-1 text-xs text-yellow-200">
+                      {{ roles.get(item.role, item.role) }}
+                    </span>
+                    <p class="text-xs text-slate-500 mt-2">
+                      محمي
+                    </p>
+                  {% else %}
+                    <form method="post" action="/internal/staff/update-role" class="flex gap-2">
+                      <input type="hidden" name="staff_id" value="{{ item.id }}">
+
+                      <select
+                        name="role"
+                        class="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white focus:outline-none focus:border-yellow-400"
+                      >
+                        {% for role_key, role_label in creatable_roles.items() %}
+                        <option value="{{ role_key }}" {% if item.role == role_key %}selected{% endif %}>
+                          {{ role_label }}
+                        </option>
+                        {% endfor %}
+                      </select>
+
+                      <button
+                        type="submit"
+                        class="rounded-xl bg-white/10 px-3 py-2 text-xs text-white hover:bg-white/15 transition"
+                      >
+                        حفظ
+                      </button>
+                    </form>
+                  {% endif %}
+                </td>
+
+                <td class="py-4">
+                  {% if item.is_active %}
+                  <span class="inline-flex rounded-full bg-green-500/10 border border-green-400/30 px-3 py-1 text-xs text-green-200">
+                    فعال
+                  </span>
+                  {% else %}
+                  <span class="inline-flex rounded-full bg-red-500/10 border border-red-400/30 px-3 py-1 text-xs text-red-200">
+                    معطل
+                  </span>
+                  {% endif %}
+                </td>
+
+                <td class="py-4 text-slate-400">
+                  {% if item.last_login_at %}
+                    {{ item.last_login_at }}
+                  {% else %}
+                    لم يسجل دخول
+                  {% endif %}
+                </td>
+
+                <td class="py-4 space-y-3">
+
+                  {% if item.role != "superadmin" and item.id != staff.id %}
+                  <form method="post" action="/internal/staff/toggle-active">
+                    <input type="hidden" name="staff_id" value="{{ item.id }}">
+
+                    <button
+                      type="submit"
+                      class="rounded-xl {% if item.is_active %}bg-red-500/15 border-red-400/30 text-red-200{% else %}bg-green-500/15 border-green-400/30 text-green-200{% endif %} border px-3 py-2 text-xs hover:bg-white/10 transition"
+                    >
+                      {% if item.is_active %}
+                        تعطيل
+                      {% else %}
+                        تفعيل
+                      {% endif %}
+                    </button>
+                  </form>
+                  {% else %}
+                  <div class="text-xs text-slate-500">
+                    لا يمكن تعطيل هذا الحساب.
+                  </div>
+                  {% endif %}
+
+                  <form method="post" action="/internal/staff/update-password" class="flex gap-2">
+                    <input type="hidden" name="staff_id" value="{{ item.id }}">
+
+                    <input
+                      type="password"
+                      name="new_password"
+                      placeholder="كلمة مرور جديدة"
+                      class="w-36 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-400"
+                    >
+
+                    <button
+                      type="submit"
+                      class="rounded-xl bg-yellow-500/15 border border-yellow-400/30 px-3 py-2 text-xs text-yellow-200 hover:bg-yellow-500/25 transition"
+                    >
+                      تغيير
+                    </button>
+                  </form>
+
+                  {% if item.role != "superadmin" and item.id != staff.id %}
+                  <form method="post" action="/internal/staff/delete" onsubmit="return confirm('هل أنت متأكد من حذف هذا الموظف؟ لا يمكن التراجع عن هذه العملية.');">
+                    <input type="hidden" name="staff_id" value="{{ item.id }}">
+
+                    <button
+                      type="submit"
+                      class="rounded-xl bg-red-600/20 border border-red-500/40 px-3 py-2 text-xs text-red-200 hover:bg-red-600/30 transition"
+                    >
+                      حذف الموظف
+                    </button>
+                  </form>
+                  {% else %}
+                  <div class="text-xs text-slate-500">
+                    لا يمكن حذف حساب الـ Super Admin أو حسابك الحالي.
+                  </div>
+                  {% endif %}
+
+                </td>
+              </tr>
+              {% endfor %}
+
+              {% if staff_users|length == 0 %}
+              <tr>
+                <td colspan="5" class="py-8 text-center text-slate-400">
+                  لا يوجد موظفون بعد.
+                </td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>طابور مراجعة المواد القانونية | Mizan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.13), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(80, 70, 180, 0.12), transparent 30%),
+        #070b16;
+      min-height: 100vh;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    details summary {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body class="text-white">
+
+  <header class="border-b border-white/10 bg-black/20">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+
+      <div>
+        <h1 class="text-xl font-bold">Mizan Internal</h1>
+        <p class="text-xs text-slate-400 mt-1">
+          طابور مراجعة المواد القانونية —
+          <span class="text-yellow-300">{{ staff.full_name }}</span>
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/internal/dashboard" class="text-sm text-slate-300 hover:text-yellow-300">
+          لوحة التحكم
+        </a>
+
+        <a href="/internal/legal-documents" class="text-sm text-slate-300 hover:text-yellow-300">
+          التشريعات
+        </a>
+
+        <a href="/internal/legal-articles" class="text-sm text-slate-300 hover:text-yellow-300">
+          المواد
+        </a>
+
+        <a href="/logout" class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition">
+          تسجيل الخروج
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-10">
+
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold mb-3">
+        طابور مراجعة المواد القانونية
+      </h2>
+
+      <p class="text-slate-400 leading-relaxed max-w-3xl">
+        المواد المستخرجة من PDF أو المدخلة يدويًا يجب مراجعتها واعتمادها قبل أن يعتمد عليها المساعد القانوني في الإجابات.
+      </p>
+    </div>
+
+    {% if error %}
+    <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
+      {% if error == "invalid_action" %}
+        الإجراء غير صحيح.
+      {% elif error == "article_not_found" %}
+        المادة غير موجودة.
+      {% else %}
+        حدث خطأ أثناء تنفيذ العملية.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
+      {% if success == "updated" %}
+        تم تحديث حالة المادة بنجاح.
+      {% else %}
+        تمت العملية بنجاح.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <section class="grid sm:grid-cols-3 gap-5 mb-8">
+      <div class="glass-card rounded-3xl border border-yellow-400/20 p-5">
+        <div class="text-sm text-yellow-200 mb-2">بانتظار المراجعة</div>
+        <div class="text-3xl font-bold text-yellow-300">{{ pending_articles|length }}</div>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-white/10 p-5">
+        <div class="text-sm text-slate-400 mb-2">مسودات</div>
+        <div class="text-3xl font-bold text-white">{{ draft_articles|length }}</div>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-red-400/20 p-5">
+        <div class="text-sm text-red-200 mb-2">مرفوضة حديثًا</div>
+        <div class="text-3xl font-bold text-red-300">{{ rejected_articles|length }}</div>
+      </div>
+    </section>
+
+    <section class="glass-card rounded-3xl border border-white/10 p-6 mb-8">
+      <h3 class="text-xl font-bold mb-5">المواد بانتظار المراجعة</h3>
+
+      <div class="space-y-5">
+        {% for article in pending_articles %}
+        {% set doc = document_map.get(article.document_id) %}
+        {% set country = country_map.get(article.country_id) %}
+
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <span class="rounded-full bg-yellow-500/10 border border-yellow-400/30 px-3 py-1 text-xs text-yellow-200">
+              بانتظار المراجعة
+            </span>
+
+            <span class="rounded-full bg-blue-500/10 border border-blue-400/30 px-3 py-1 text-xs text-blue-200">
+              {{ country.name_ar if country else "غير محدد" }}
+            </span>
+
+            <span class="rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs text-slate-300">
+              {{ doc.title_ar if doc else "تشريع غير محدد" }}
+            </span>
+
+            <span class="rounded-full bg-green-500/10 border border-green-400/30 px-3 py-1 text-xs text-green-200">
+              المادة {{ article.article_number }}
+            </span>
+          </div>
+
+          {% if article.article_title %}
+          <h4 class="text-lg font-bold text-white mb-2">
+            {{ article.article_title }}
+          </h4>
+          {% endif %}
+
+          <details class="rounded-xl bg-black/20 border border-white/10 p-4 mb-4">
+            <summary class="text-sm text-yellow-300 font-bold">
+              عرض نص المادة كاملًا
+            </summary>
+
+            <p class="text-sm text-slate-300 leading-relaxed mt-4 whitespace-pre-line">
+              {{ article.article_text }}
+            </p>
+          </details>
+
+          {% if article.notes %}
+          <div class="rounded-xl bg-white/5 border border-white/10 p-4 text-xs text-slate-400 mb-4">
+            <strong class="text-slate-300">ملاحظات:</strong>
+            {{ article.notes }}
+          </div>
+          {% endif %}
+
+          <div class="flex flex-wrap gap-3">
+            <form method="post" action="/internal/review-queue/update">
+              <input type="hidden" name="article_id" value="{{ article.id }}">
+              <input type="hidden" name="action" value="approve">
+
+              <button
+                type="submit"
+                class="rounded-xl bg-green-500/15 border border-green-400/30 px-4 py-2 text-sm text-green-200 hover:bg-green-500/25 transition"
+              >
+                اعتماد المادة
+              </button>
+            </form>
+
+            <form method="post" action="/internal/review-queue/update">
+              <input type="hidden" name="article_id" value="{{ article.id }}">
+              <input type="hidden" name="action" value="reject">
+
+              <button
+                type="submit"
+                class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition"
+              >
+                رفض المادة
+              </button>
+            </form>
+
+            <form method="post" action="/internal/review-queue/update">
+              <input type="hidden" name="article_id" value="{{ article.id }}">
+              <input type="hidden" name="action" value="archive">
+
+              <button
+                type="submit"
+                class="rounded-xl bg-white/10 border border-white/10 px-4 py-2 text-sm text-slate-200 hover:bg-white/15 transition"
+              >
+                أرشفة
+              </button>
+            </form>
+
+            {% if doc %}
+            <a
+              href="/internal/legal-articles?document_id={{ doc.id }}"
+              class="rounded-xl bg-yellow-500/15 border border-yellow-400/30 px-4 py-2 text-sm text-yellow-200 hover:bg-yellow-500/25 transition"
+            >
+              فتح التشريع
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+
+        {% if pending_articles|length == 0 %}
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-8 text-center text-slate-400">
+          لا توجد مواد بانتظار المراجعة حاليًا.
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="grid lg:grid-cols-2 gap-6">
+
+      <div class="glass-card rounded-3xl border border-white/10 p-6">
+        <h3 class="text-xl font-bold mb-5">آخر المسودات</h3>
+
+        <div class="space-y-4">
+          {% for article in draft_articles %}
+          {% set doc = document_map.get(article.document_id) %}
+
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+            <div class="text-sm font-bold text-white">
+              المادة {{ article.article_number }}
+            </div>
+
+            <div class="text-xs text-slate-500 mt-1">
+              {{ doc.title_ar if doc else "تشريع غير محدد" }}
+            </div>
+
+            <div class="text-xs text-slate-400 mt-3 line-clamp-3">
+              {{ article.article_text[:250] }}{% if article.article_text|length > 250 %}...{% endif %}
+            </div>
+
+            <form method="post" action="/internal/review-queue/update" class="mt-3">
+              <input type="hidden" name="article_id" value="{{ article.id }}">
+              <input type="hidden" name="action" value="back_to_pending">
+
+              <button
+                type="submit"
+                class="rounded-xl bg-yellow-500/15 border border-yellow-400/30 px-3 py-2 text-xs text-yellow-200 hover:bg-yellow-500/25 transition"
+              >
+                إرسال للمراجعة
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+
+          {% if draft_articles|length == 0 %}
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-8 text-center text-slate-400">
+            لا توجد مسودات.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-white/10 p-6">
+        <h3 class="text-xl font-bold mb-5">مواد مرفوضة حديثًا</h3>
+
+        <div class="space-y-4">
+          {% for article in rejected_articles %}
+          {% set doc = document_map.get(article.document_id) %}
+
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+            <div class="text-sm font-bold text-white">
+              المادة {{ article.article_number }}
+            </div>
+
+            <div class="text-xs text-slate-500 mt-1">
+              {{ doc.title_ar if doc else "تشريع غير محدد" }}
+            </div>
+
+            <div class="text-xs text-slate-400 mt-3">
+              {{ article.article_text[:250] }}{% if article.article_text|length > 250 %}...{% endif %}
+            </div>
+
+            <form method="post" action="/internal/review-queue/update" class="mt-3">
+              <input type="hidden" name="article_id" value="{{ article.id }}">
+              <input type="hidden" name="action" value="back_to_pending">
+
+              <button
+                type="submit"
+                class="rounded-xl bg-yellow-500/15 border border-yellow-400/30 px-3 py-2 text-xs text-yellow-200 hover:bg-yellow-500/25 transition"
+              >
+                إرجاع للمراجعة
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+
+          {% if rejected_articles|length == 0 %}
+          <div class="rounded-2xl bg-white/5 border border-white/10 p-8 text-center text-slate-400">
+            لا توجد مواد مرفوضة حديثًا.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+</body>
+</html>

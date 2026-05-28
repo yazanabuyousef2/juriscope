@@ -302,22 +302,155 @@
 </section>
 
 <!-- ═══════════════════════ PRICING TEASER ═══════════════════════ -->
+<section c<!-- ═══════════════════════ PRICING TEASER ═══════════════════════ -->
 <section class="py-24 bg-navy-900/50">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
     <div class="text-center mb-12">
-      <h2 class="text-3xl font-bold mb-3">الباقات والأسعار</h2>
-      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-sm font-medium">⏳ قريبًا</div>
-    </div>
-    <div class="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-      {% for plan in [('الأفراد', '👤', 'للاستخدام الشخصي وفهم حقوقك القانونية'), ('الأعمال', '🏢', 'لأصحاب المشاريع والشركات الصغيرة'), ('المحامون', '⚖️', 'لفرق القانون والمحامين المحترفين')] %}
-      <div class="glass-card rounded-2xl p-7 border border-white/10 text-center opacity-70">
-        <div class="text-3xl mb-3">{{ plan[1] }}</div>
-        <h3 class="text-lg font-bold mb-2">{{ plan[0] }}</h3>
-        <p class="text-slate-400 text-sm mb-5">{{ plan[2] }}</p>
-        <div class="w-full py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-500 text-sm font-medium cursor-not-allowed">قريبًا</div>
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-sm font-medium mb-4">
+        ✨ جميع الباقات مجانية حاليًا
       </div>
-      {% endfor %}
+
+      <h2 class="text-3xl font-bold mb-3">
+        باقات Mizan
+      </h2>
+
+      <p class="text-slate-400 max-w-2xl mx-auto text-sm leading-relaxed">
+        اختر الباقة المناسبة لك أثناء مرحلة التطوير. جميع الباقات مفتوحة ومجانية حاليًا، والاختلاف الآن في طريقة التفكير والتحليل داخل المساعد.
+      </p>
     </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+      <!-- Free -->
+      <div class="glass-card rounded-2xl p-7 border border-white/10 flex flex-col">
+        <div class="text-sm text-gold-400 mb-2">المجانية</div>
+
+        <div class="mb-5">
+          <span class="text-3xl font-bold text-white">مجانية</span>
+          <span class="text-slate-400 text-sm"> / حاليًا</span>
+        </div>
+
+        <p class="text-slate-400 text-sm mb-5 leading-relaxed">
+          مناسبة للتجربة والفهم العام للموقف القانوني.
+        </p>
+
+        <ul class="space-y-2 text-sm text-slate-300 mb-6 flex-1">
+          <li>• تحليل مبسط وواضح.</li>
+          <li>• شرح مناسب للمستخدم العادي.</li>
+          <li>• تنبيه بالمخاطر الأساسية.</li>
+          <li>• مناسبة للتجربة الأولى.</li>
+        </ul>
+
+        <a
+          href="/pricing"
+          class="w-full inline-flex items-center justify-center rounded-xl bg-white/10 px-5 py-3 text-white font-bold hover:bg-white/15 transition"
+        >
+          اختيار الباقة
+        </a>
+      </div>
+
+      <!-- Individual -->
+      <div class="glass-card rounded-2xl p-7 border border-white/10 flex flex-col">
+        <div class="text-sm text-gold-400 mb-2">الأفراد</div>
+
+        <div class="mb-5">
+          <span class="text-3xl font-bold text-white">مجانية</span>
+          <span class="text-slate-400 text-sm"> / حاليًا</span>
+        </div>
+
+        <p class="text-slate-400 text-sm mb-5 leading-relaxed">
+          مناسبة لمن يريد فهم موقفه القانوني وخطواته القادمة.
+        </p>
+
+        <ul class="space-y-2 text-sm text-slate-300 mb-6 flex-1">
+          <li>• تحليل عملي أوضح.</li>
+          <li>• خطوات مقترحة للمستخدم.</li>
+          <li>• توضيح المخاطر بلغة مفهومة.</li>
+          <li>• مناسبة لغير المتخصصين.</li>
+        </ul>
+
+        <a
+          href="/pricing"
+          class="w-full inline-flex items-center justify-center rounded-xl bg-white/10 px-5 py-3 text-white font-bold hover:bg-white/15 transition"
+        >
+          اختيار الباقة
+        </a>
+      </div>
+
+      <!-- Business -->
+      <div class="glass-card rounded-2xl p-7 border border-white/10 flex flex-col">
+        <div class="text-sm text-gold-400 mb-2">الأعمال والشركات</div>
+
+        <div class="mb-5">
+          <span class="text-3xl font-bold text-white">مجانية</span>
+          <span class="text-slate-400 text-sm"> / حاليًا</span>
+        </div>
+
+        <p class="text-slate-400 text-sm mb-5 leading-relaxed">
+          مناسبة للشركات ورواد الأعمال وتحليل المخاطر التجارية.
+        </p>
+
+        <ul class="space-y-2 text-sm text-slate-300 mb-6 flex-1">
+          <li>• تحليل مخاطر تجارية.</li>
+          <li>• عقود وشراكات.</li>
+          <li>• مخاطر مالية وتشغيلية.</li>
+          <li>• مسارات تسوية وتقليل خسائر.</li>
+        </ul>
+
+        <a
+          href="/pricing"
+          class="w-full inline-flex items-center justify-center rounded-xl bg-white/10 px-5 py-3 text-white font-bold hover:bg-white/15 transition"
+        >
+          اختيار الباقة
+        </a>
+      </div>
+
+      <!-- Lawyer -->
+      <div class="glass-card rounded-2xl p-7 border border-gold-400/30 flex flex-col relative">
+        <div class="absolute top-4 left-4 rounded-full bg-gold-500 text-navy-950 text-xs font-bold px-3 py-1">
+          متقدمة
+        </div>
+
+        <div class="text-sm text-gold-400 mb-2">المحامون</div>
+
+        <div class="mb-5">
+          <span class="text-3xl font-bold text-white">مجانية</span>
+          <span class="text-slate-400 text-sm"> / حاليًا</span>
+        </div>
+
+        <p class="text-slate-400 text-sm mb-5 leading-relaxed">
+          مناسبة للتحليل القانوني العميق والاستراتيجية والدفوع.
+        </p>
+
+        <ul class="space-y-2 text-sm text-slate-300 mb-6 flex-1">
+          <li>• تكييف قانوني احترافي.</li>
+          <li>• دفوع ومخاطر إجرائية.</li>
+          <li>• تحليل عبء الإثبات.</li>
+          <li>• استراتيجية أولية للمحامي.</li>
+        </ul>
+
+        <a
+          href="/pricing"
+          class="w-full inline-flex items-center justify-center rounded-xl bg-gold-500 px-5 py-3 text-navy-950 font-bold hover:bg-gold-400 transition"
+        >
+          اختيار الباقة
+        </a>
+      </div>
+
+    </div>
+
+    <div class="mt-10 text-center">
+      <a
+        href="/pricing"
+        class="inline-flex items-center justify-center rounded-xl border border-gold-400/30 px-6 py-3 text-gold-300 font-semibold hover:bg-gold-400/10 transition"
+      >
+        عرض جميع الباقات وتغيير الباقة الحالية
+      </a>
+    </div>
+
+  </div>
+</section>
   </div>
 </section>
 
@@ -388,10 +521,10 @@
       <div class="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-gold-400/10"></div>
       <div class="relative">
         <h2 class="text-3xl font-bold mb-4">جاهز لفهم موقفك القانوني؟</h2>
-        <p class="text-slate-400 mb-8">ابدأ الآن. لا تسجيل مطلوب. مجاني تمامًا.</p>
+        <p class="text-slate-400 mb-8">ابدأ الآن بعد تسجيل الدخول. جميع الباقات مجانية حاليًا أثناء مرحلة التطوير.</p>
         <a href="/assistant" class="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gold-400 text-navy-950 font-bold text-lg hover:bg-gold-500 transition-all shadow-2xl shadow-gold-400/30">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-          جرّب المساعد القانوني مجانًا
+          ابدأ باستخدام Mizan
         </a>
       </div>
     </div>

@@ -1,50 +1,335 @@
 {% extends "base.html" %}
-{% block title %}الملف الشخصي – Mizan{% endblock %}
+
+{% block title %}الملف الشخصي | Mizan{% endblock %}
+
 {% block content %}
-<section class="py-12 px-4 min-h-screen">
+{% set usage = usage|default({'analyses': 0, 'documents': 0, 'cases': 0}) %}
+{% set limits = limits|default({'analyses_per_month': 999999, 'documents_per_month': 999999, 'cases': 999999}) %}
+{% set phone_codes = ['+962', '+966', '+971', '+20', '+964', '+974', '+965', '+973', '+968'] %}
+
+{% set user_roles = {
+  'individual': 'فرد / مستخدم عادي',
+  'lawyer': 'محامي',
+  'company': 'شركة / رجل أعمال',
+  'judge': 'قاضٍ',
+  'law_student': 'طالب قانون',
+  'legal_researcher': 'باحث قانوني',
+  'government_employee': 'موظف حكومي'
+} %}
+
+{% set plan_labels = {
+  'free': 'المجانية',
+  'individual': 'الأفراد',
+  'business': 'الأعمال والشركات',
+  'lawyer': 'المحامين'
+} %}
+
+<section class="min-h-screen py-12 px-4">
   <div class="max-w-6xl mx-auto">
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold">الملف الشخصي</h1>
-      <p class="text-slate-400 mt-2">إدارة حسابك، باقتك، واستخدامك الشهري.</p>
+
+    <div class="mb-10">
+      <h1 class="text-3xl sm:text-4xl font-bold text-white mb-3">
+        الملف الشخصي
+      </h1>
+      <p class="text-slate-300">
+        إدارة بيانات الحساب، نوع المستخدم، الباقة، رقم الهاتف، وكلمة المرور.
+      </p>
     </div>
 
+    {% if request.query_params.get("updated") %}
+    <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
+      تم تحديث بيانات الحساب بنجاح.
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get("plan_updated") %}
+    <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
+      تم تغيير الباقة بنجاح. جميع الباقات مجانية ومفتوحة حاليًا.
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get("password_updated") %}
+    <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
+      تم تحديث كلمة المرور بنجاح.
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get("error") %}
+    <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
+      {% if request.query_params.get("error") == "email_exists" %}
+        هذا البريد الإلكتروني مستخدم من حساب آخر.
+      {% elif request.query_params.get("error") == "wrong_password" %}
+        كلمة المرور الحالية غير صحيحة.
+      {% elif request.query_params.get("error") == "password_mismatch" %}
+        كلمة المرور الجديدة وتأكيدها غير متطابقين.
+      {% elif request.query_params.get("error") == "weak_password" %}
+        كلمة المرور الجديدة ضعيفة. يجب أن تحتوي على حرف كبير، حرف صغير، رقم، ورمز خاص.
+      {% elif request.query_params.get("error") == "invalid_phone" %}
+        رقم الهاتف غير صحيح.
+      {% elif request.query_params.get("error") == "invalid_user_role" %}
+        نوع المستخدم غير صحيح.
+      {% elif request.query_params.get("error") == "invalid_plan" %}
+        الباقة المختارة غير صحيحة.
+      {% else %}
+        حدث خطأ أثناء تحديث البيانات. تأكد من صحة المعلومات المدخلة.
+      {% endif %}
+    </div>
+    {% endif %}
+
     <div class="grid lg:grid-cols-3 gap-6">
-      <div class="glass-card rounded-3xl border border-white/10 p-6">
-        <div class="flex items-center gap-4 mb-6">
-          <img src="/static/images/mizan-logo.png" class="w-16 h-16 object-contain rounded-xl">
-          <div>
-            <h2 class="text-xl font-bold">{{ user.full_name }}</h2>
-            <p class="text-sm text-slate-400">{{ user.email }}</p>
+
+      <!-- Current account info -->
+      <div class="lg:col-span-1 space-y-6">
+
+        <div class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-bold text-white text-xl mb-4">بيانات الحساب الحالية</h2>
+
+          <div class="space-y-4 text-sm">
+            <div>
+              <div class="text-slate-400 mb-1">الاسم</div>
+              <div class="text-white font-semibold">
+                {{ user.full_name if user.full_name else "غير محدد" }}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-slate-400 mb-1">البريد الإلكتروني</div>
+              <div class="text-white font-semibold break-all">
+                {{ user.email if user.email else "غير محدد" }}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-slate-400 mb-1">الدولة القانونية</div>
+              <div class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white font-semibold">
+                {{ user.country if user.country else "غير محددة" }}
+              </div>
+              <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+                الدولة غير قابلة للتعديل من الحساب لأنها تحدد القوانين والأسعار وإجابات المساعد.
+              </p>
+            </div>
+
+            <div>
+              <div class="text-slate-400 mb-1">نوع المستخدم</div>
+              <div class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white font-semibold">
+                {{ user_roles.get(user.user_role, "فرد / مستخدم عادي") }}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-slate-400 mb-1">الباقة الحالية</div>
+              <div class="rounded-xl bg-gold-400/10 border border-gold-400/20 px-4 py-3 text-gold-300 font-bold">
+                {{ plan_labels.get(user.plan, "المجانية") }}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-slate-400 mb-1">رقم الهاتف</div>
+              <div class="text-white font-semibold">
+                {{ user.phone_country_code if user.phone_country_code else "" }}
+                {{ user.phone if user.phone else "غير مضاف" }}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-slate-400 mb-1">حالة تأكيد الهاتف</div>
+              {% if user.phone_verified %}
+              <div class="text-green-300 font-semibold">مؤكد مؤقتًا للتطوير</div>
+              {% else %}
+              <div class="text-amber-300 font-semibold">غير مؤكد</div>
+              {% endif %}
+            </div>
           </div>
         </div>
-        <div class="rounded-2xl bg-gold-400/10 border border-gold-400/20 p-4">
-          <div class="text-xs text-gold-400 mb-1">الباقة الحالية</div>
-          <div class="text-2xl font-bold">{{ plan_names.get(user.plan, 'المجانية') if plan_names else user.plan }}</div>
+
+        <div class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-bold text-white text-xl mb-4">الاستخدام</h2>
+
+          <div class="space-y-3">
+            <div class="rounded-xl bg-white/5 border border-white/10 p-4 flex items-center justify-between">
+              <span class="text-slate-300">التحليلات</span>
+              <span class="text-white font-bold">{{ usage.analyses }}/{{ limits.analyses_per_month }}</span>
+            </div>
+
+            <div class="rounded-xl bg-white/5 border border-white/10 p-4 flex items-center justify-between">
+              <span class="text-slate-300">المستندات</span>
+              <span class="text-white font-bold">{{ usage.documents }}/{{ limits.documents_per_month }}</span>
+            </div>
+
+            <div class="rounded-xl bg-white/5 border border-white/10 p-4 flex items-center justify-between">
+              <span class="text-slate-300">القضايا</span>
+              <span class="text-white font-bold">{{ usage.cases }}/{{ limits.cases }}</span>
+            </div>
+          </div>
         </div>
-        <a href="/pricing" class="mt-4 block text-center py-3 rounded-xl border border-white/10 hover:border-gold-400/40 hover:text-gold-400 transition-all">عرض الباقات</a>
       </div>
 
-      <div class="lg:col-span-2 grid sm:grid-cols-3 gap-4">
-        <div class="glass-card rounded-2xl border border-white/10 p-5">
-          <div class="text-xs text-slate-400 mb-2">التحليلات هذا الشهر</div>
-          <div class="text-3xl font-bold">{{ usage.analyses }}<span class="text-sm text-slate-500"> / {{ limits.analyses_per_month }}</span></div>
+      <!-- Forms -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <div class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-bold text-white text-xl mb-4">تغيير الباقة</h2>
+          <p class="text-slate-400 text-sm mb-5">
+            جميع الباقات مجانية ومفتوحة حاليًا أثناء التطوير. تغيير الباقة سيؤثر لاحقًا على طريقة تفكير Mizan في التحليل.
+          </p>
+
+          <form method="post" action="/profile/plan" class="space-y-4">
+            <select
+              name="plan"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+            >
+              <option value="free" class="text-black" {% if user.plan == "free" %}selected{% endif %}>المجانية</option>
+              <option value="individual" class="text-black" {% if user.plan == "individual" %}selected{% endif %}>الأفراد</option>
+              <option value="business" class="text-black" {% if user.plan == "business" %}selected{% endif %}>الأعمال والشركات</option>
+              <option value="lawyer" class="text-black" {% if user.plan == "lawyer" %}selected{% endif %}>المحامين</option>
+            </select>
+
+            <button
+              type="submit"
+              class="rounded-xl bg-gold-500 px-6 py-3 text-navy-950 font-bold hover:bg-gold-400 transition"
+            >
+              حفظ الباقة
+            </button>
+          </form>
         </div>
-        <div class="glass-card rounded-2xl border border-white/10 p-5">
-          <div class="text-xs text-slate-400 mb-2">المستندات هذا الشهر</div>
-          <div class="text-3xl font-bold">{{ usage.documents }}<span class="text-sm text-slate-500"> / {{ limits.documents_per_month }}</span></div>
+
+        <div class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-bold text-white text-xl mb-4">تعديل بيانات الحساب</h2>
+
+          <form method="post" action="/profile/update" class="space-y-5">
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">الاسم الكامل</label>
+              <input
+                type="text"
+                name="full_name"
+                value="{{ user.full_name if user.full_name else '' }}"
+                required
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+              >
+            </div>
+
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">البريد الإلكتروني</label>
+              <input
+                type="email"
+                name="email"
+                value="{{ user.email if user.email else '' }}"
+                required
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+              >
+            </div>
+
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">الدولة القانونية للحساب</label>
+              <div class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+                {{ user.country if user.country else "غير محددة" }}
+              </div>
+              <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                الدولة غير قابلة للتعديل من هذه الصفحة. تغيير الدولة يتطلب مراجعة إدارية لاحقًا.
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">نوع المستخدم</label>
+              <select
+                name="user_role"
+                required
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+              >
+                {% for role_key, role_label in user_roles.items() %}
+                <option value="{{ role_key }}" class="text-black" {% if user.user_role == role_key %}selected{% endif %}>
+                  {{ role_label }}
+                </option>
+                {% endfor %}
+              </select>
+              <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+                تغيير نوع المستخدم يؤثر على طريقة صياغة إجابات Mizan، لكنه لا يغير الدولة القانونية للحساب.
+              </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm text-slate-300 mb-2">مقدمة الهاتف</label>
+                <select
+                  name="phone_country_code"
+                  required
+                  class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+                >
+                  {% for code in phone_codes %}
+                  <option value="{{ code }}" class="text-black" {% if user.phone_country_code == code %}selected{% endif %}>
+                    {{ code }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="block text-sm text-slate-300 mb-2">رقم الهاتف</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value="{{ user.phone if user.phone else '' }}"
+                  required
+                  class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+                >
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              class="rounded-xl bg-gold-500 px-6 py-3 text-navy-950 font-bold hover:bg-gold-400 transition"
+            >
+              حفظ التعديلات
+            </button>
+          </form>
         </div>
-        <div class="glass-card rounded-2xl border border-white/10 p-5">
-          <div class="text-xs text-slate-400 mb-2">القضايا</div>
-          <div class="text-3xl font-bold">{{ usage.cases }}<span class="text-sm text-slate-500"> / {{ limits.cases }}</span></div>
+
+        <div class="glass-card rounded-3xl border border-white/10 p-6">
+          <h2 class="font-bold text-white text-xl mb-4">تغيير كلمة المرور</h2>
+
+          <form method="post" action="/profile/password" class="space-y-5">
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">كلمة المرور الحالية</label>
+              <input
+                type="password"
+                name="current_password"
+                required
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+              >
+            </div>
+
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">كلمة المرور الجديدة</label>
+              <input
+                type="password"
+                name="new_password"
+                required
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+              >
+              <p class="mt-2 text-xs text-slate-400">
+                يجب أن تحتوي على 8 أحرف على الأقل، حرف كبير، حرف صغير، رقم، ورمز خاص.
+              </p>
+            </div>
+
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">تأكيد كلمة المرور الجديدة</label>
+              <input
+                type="password"
+                name="confirm_password"
+                required
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+              >
+            </div>
+
+            <button
+              type="submit"
+              class="rounded-xl bg-white/10 px-6 py-3 text-white font-bold hover:bg-white/15 transition"
+            >
+              تحديث كلمة المرور
+            </button>
+          </form>
         </div>
-        <div class="sm:col-span-3 glass-card rounded-2xl border border-white/10 p-6">
-          <h3 class="font-semibold mb-4">اختصارات سريعة</h3>
-          <div class="grid sm:grid-cols-3 gap-3">
-            <a href="/assistant" class="rounded-xl bg-gold-400 text-navy-950 font-semibold p-4 text-center">استخدام المساعد</a>
-            <a href="/cases/new" class="rounded-xl bg-white/10 hover:bg-white/15 p-4 text-center">إنشاء قضية</a>
-            <a href="/cases" class="rounded-xl bg-white/10 hover:bg-white/15 p-4 text-center">قضاياي</a>
-          </div>
-        </div>
+
       </div>
     </div>
   </div>

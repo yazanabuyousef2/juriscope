@@ -53,6 +53,17 @@ def fetch_all(query: str, params: tuple = ()):
     return rows
 
 
+def column_exists(cursor, table_name: str, column_name: str) -> bool:
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = cursor.fetchall()
+    return any(column["name"] == column_name for column in columns)
+
+
+def add_column_if_missing(cursor, table_name: str, column_name: str, definition: str):
+    if not column_exists(cursor, table_name, column_name):
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
+
+
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
@@ -67,6 +78,31 @@ def init_db():
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL
     )
+    """)
+
+    # Safe migrations for existing databases
+    add_column_if_missing(cursor, "users", "country", "TEXT NOT NULL DEFAULT 'الأردن'")
+    add_column_if_missing(cursor, "users", "phone", "TEXT NOT NULL DEFAULT ''")
+    add_column_if_missing(cursor, "users", "phone_country_code", "TEXT DEFAULT '+962'")
+    add_column_if_missing(cursor, "users", "phone_verified", "INTEGER NOT NULL DEFAULT 1")
+    add_column_if_missing(cursor, "users", "user_role", "TEXT NOT NULL DEFAULT 'individual'")
+
+    cursor.execute("""
+    UPDATE users
+    SET country = 'الأردن'
+    WHERE country IS NULL OR TRIM(country) = ''
+    """)
+
+    cursor.execute("""
+    UPDATE users
+    SET phone_country_code = '+962'
+    WHERE phone_country_code IS NULL OR TRIM(phone_country_code) = ''
+    """)
+
+    cursor.execute("""
+    UPDATE users
+    SET user_role = 'individual'
+    WHERE user_role IS NULL OR TRIM(user_role) = ''
     """)
 
     cursor.execute("""
@@ -175,10 +211,7 @@ def create_session(user_id: int) -> str:
 
 def delete_session(token: str):
     if token:
-        execute(
-            "DELETE FROM sessions WHERE token = ?",
-            (token,),
-        )
+        execute("DELETE FROM sessions WHERE token = ?", (token,))
 
 
 def get_user_by_session(token: str):
@@ -212,10 +245,6 @@ def user_limits(plan: str = "free") -> dict:
 
 
 def user_usage(user_id: int) -> dict:
-    """
-    Returns current usage statistics for the user.
-    """
-
     analyses_row = fetch_one(
         """
         SELECT COUNT(*) AS count
@@ -253,27 +282,12 @@ def user_usage(user_id: int) -> dict:
 
 
 def can_analyze(user_id: int, plan: str = "free") -> tuple[bool, str]:
-    """
-    Development mode:
-    يسمح بجميع التحليلات بدون حد.
-    """
-
     return True, ""
 
 
 def can_upload_document(user_id: int, plan: str = "free") -> tuple[bool, str]:
-    """
-    Development mode:
-    يسمح برفع جميع المستندات بدون حد.
-    """
-
     return True, ""
 
 
 def can_create_case(user_id: int, plan: str = "free") -> tuple[bool, str]:
-    """
-    Development mode:
-    يسمح بإنشاء جميع القضايا بدون حد.
-    """
-
     return True, ""

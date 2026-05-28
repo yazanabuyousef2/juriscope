@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>القضايا الحساسة | Mizan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.13), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(80, 70, 180, 0.12), transparent 30%),
+        #070b16;
+      min-height: 100vh;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    .ltr {
+      direction: ltr;
+      text-align: left;
+    }
+
+    select option {
+      color: #000;
+    }
+  </style>
+</head>
+
+<body class="text-white">
+
+  <header class="border-b border-white/10 bg-black/20">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+
+      <div>
+        <h1 class="text-xl font-bold">Mizan Internal</h1>
+        <p class="text-xs text-slate-400 mt-1">
+          القضايا الحساسة —
+          <span class="text-yellow-300">{{ staff.full_name }}</span>
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/internal/dashboard" class="text-sm text-slate-300 hover:text-yellow-300">
+          لوحة التحكم
+        </a>
+
+        <a href="/logout" class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition">
+          تسجيل الخروج
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-10">
+
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold mb-3">
+        القضايا الحساسة
+      </h2>
+
+      <p class="text-slate-400 leading-relaxed max-w-3xl">
+        لا يمكن فتح تفاصيل أي قضية من هذه الصفحة إلا بعد كتابة سبب الوصول. يتم تسجيل كل عملية وصول للمتابعة والتدقيق الداخلي.
+      </p>
+    </div>
+
+    {% if error %}
+    <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
+      {% if error == "reason_required" %}
+        يجب كتابة سبب واضح للوصول لا يقل عن 10 أحرف.
+      {% elif error == "case_not_found" %}
+        القضية غير موجودة.
+      {% else %}
+        حدث خطأ أثناء تنفيذ العملية.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
+      {% if success == "access_logged" %}
+        تم تسجيل سبب الوصول وفتح تفاصيل القضية.
+      {% else %}
+        تمت العملية بنجاح.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <section class="grid sm:grid-cols-3 gap-5 mb-8">
+      <div class="glass-card rounded-3xl border border-white/10 p-5">
+        <div class="text-sm text-slate-400 mb-2">إجمالي القضايا</div>
+        <div class="text-3xl font-bold text-white">{{ stats.total_cases }}</div>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-yellow-400/20 p-5">
+        <div class="text-sm text-yellow-200 mb-2">المعروض حاليًا</div>
+        <div class="text-3xl font-bold text-yellow-300">{{ stats.shown_cases }}</div>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-red-400/20 p-5">
+        <div class="text-sm text-red-200 mb-2">سجلات الوصول</div>
+        <div class="text-3xl font-bold text-red-300">{{ stats.access_logs }}</div>
+      </div>
+    </section>
+
+    {% if selected_case %}
+    <section class="glass-card rounded-3xl border border-yellow-400/30 p-6 mb-8">
+      <h3 class="text-2xl font-bold mb-4">
+        تفاصيل القضية #{{ selected_case.id }}
+      </h3>
+
+      <div class="grid md:grid-cols-2 gap-4 mb-6">
+        {% for key, value in selected_case.items() %}
+        <div class="rounded-xl bg-white/5 border border-white/10 p-4">
+          <div class="text-xs text-slate-500 mb-1">{{ key }}</div>
+          <div class="text-sm text-slate-200 break-words">{{ value }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-6">
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <h4 class="font-bold text-white mb-4">ملاحظات القضية</h4>
+          <div class="space-y-3">
+            {% for note in notes %}
+            <div class="rounded-xl bg-black/20 border border-white/10 p-3 text-sm text-slate-300">
+              {{ note }}
+            </div>
+            {% endfor %}
+            {% if notes|length == 0 %}
+            <div class="text-slate-500 text-sm">لا توجد ملاحظات.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <h4 class="font-bold text-white mb-4">تحديثات القضية</h4>
+          <div class="space-y-3">
+            {% for update in updates %}
+            <div class="rounded-xl bg-black/20 border border-white/10 p-3 text-sm text-slate-300">
+              {{ update }}
+            </div>
+            {% endfor %}
+            {% if updates|length == 0 %}
+            <div class="text-slate-500 text-sm">لا توجد تحديثات.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <h4 class="font-bold text-white mb-4">التحليلات</h4>
+          <div class="space-y-3">
+            {% for analysis in analyses %}
+            <details class="rounded-xl bg-black/20 border border-white/10 p-3 text-sm text-slate-300">
+              <summary class="cursor-pointer text-yellow-300">تحليل #{{ analysis.id }}</summary>
+              <pre class="ltr mt-3 whitespace-pre-wrap text-xs">{{ analysis }}</pre>
+            </details>
+            {% endfor %}
+            {% if analyses|length == 0 %}
+            <div class="text-slate-500 text-sm">لا توجد تحليلات.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="rounded-2xl bg-white/5 border border-white/10 p-5">
+          <h4 class="font-bold text-white mb-4">المستندات</h4>
+          <div class="space-y-3">
+            {% for document in documents %}
+            <div class="rounded-xl bg-black/20 border border-white/10 p-3 text-sm text-slate-300">
+              {{ document }}
+            </div>
+            {% endfor %}
+            {% if documents|length == 0 %}
+            <div class="text-slate-500 text-sm">لا توجد مستندات.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="glass-card rounded-3xl border border-white/10 p-6 mb-8">
+      <h3 class="text-xl font-bold mb-5">فلترة القضايا</h3>
+
+      <form method="get" action="/internal/sensitive-cases" class="grid lg:grid-cols-4 gap-4">
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">بحث</label>
+          <input
+            type="text"
+            name="search"
+            value="{{ search }}"
+            placeholder="رقم أو عنوان القضية..."
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-yellow-400"
+          >
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">الحالة</label>
+          <input
+            type="text"
+            name="status"
+            value="{{ status }}"
+            placeholder="open / closed..."
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-yellow-400"
+          >
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">نوع القضية</label>
+          <input
+            type="text"
+            name="case_type"
+            value="{{ case_type }}"
+            placeholder="مدني، تجاري..."
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-yellow-400"
+          >
+        </div>
+
+        <div class="flex items-end gap-3">
+          <button
+            type="submit"
+            class="rounded-xl bg-yellow-500 px-6 py-3 text-slate-950 font-bold hover:bg-yellow-400 transition"
+          >
+            فلترة
+          </button>
+
+          <a
+            href="/internal/sensitive-cases"
+            class="rounded-xl bg-white/10 border border-white/10 px-6 py-3 text-white font-bold hover:bg-white/15 transition"
+          >
+            إعادة ضبط
+          </a>
+        </div>
+
+      </form>
+    </section>
+
+    <section class="glass-card rounded-3xl border border-white/10 p-6 mb-8">
+      <h3 class="text-xl font-bold mb-5">قائمة القضايا</h3>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/10 text-slate-400">
+              <th class="py-3 text-right">رقم</th>
+              <th class="py-3 text-right">العنوان</th>
+              <th class="py-3 text-right">الدولة</th>
+              <th class="py-3 text-right">النوع</th>
+              <th class="py-3 text-right">الحالة</th>
+              <th class="py-3 text-right">آخر تحديث</th>
+              <th class="py-3 text-right">فتح</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for item in cases %}
+            <tr class="border-b border-white/5 align-top">
+              <td class="py-4 text-slate-300">#{{ item.id }}</td>
+
+              <td class="py-4">
+                <div class="font-semibold text-white">
+                  {{ item.title }}
+                </div>
+              </td>
+
+              <td class="py-4 text-slate-300">
+                {{ item.country_name or item.country or item.country_code or "غير محدد" }}
+              </td>
+
+              <td class="py-4 text-slate-300">
+                {{ item.case_type or "غير محدد" }}
+              </td>
+
+              <td class="py-4 text-slate-300">
+                {{ item.status or "غير محدد" }}
+              </td>
+
+              <td class="py-4 text-slate-400">
+                {{ item.updated_at }}
+              </td>
+
+              <td class="py-4">
+                <form method="post" action="/internal/sensitive-cases/view" class="space-y-2">
+                  <input type="hidden" name="case_id" value="{{ item.id }}">
+
+                  <textarea
+                    name="access_reason"
+                    rows="2"
+                    required
+                    placeholder="اكتب سبب الوصول..."
+                    class="w-64 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-yellow-400"
+                  ></textarea>
+
+                  <button
+                    type="submit"
+                    class="block rounded-xl bg-yellow-500/15 border border-yellow-400/30 px-4 py-2 text-xs text-yellow-200 hover:bg-yellow-500/25 transition"
+                  >
+                    فتح مع تسجيل السبب
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+
+            {% if cases|length == 0 %}
+            <tr>
+              <td colspan="7" class="py-8 text-center text-slate-400">
+                لا توجد قضايا مطابقة.
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="glass-card rounded-3xl border border-white/10 p-6">
+      <h3 class="text-xl font-bold mb-5">آخر سجلات الوصول</h3>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/10 text-slate-400">
+              <th class="py-3 text-right">الموظف</th>
+              <th class="py-3 text-right">القضية</th>
+              <th class="py-3 text-right">السبب</th>
+              <th class="py-3 text-right">التاريخ</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for log in recent_logs %}
+            <tr class="border-b border-white/5">
+              <td class="py-4">
+                <div class="text-white">{{ log.staff_name or log.staff_id }}</div>
+                <div class="text-xs text-slate-500">{{ log.staff_email }}</div>
+              </td>
+
+              <td class="py-4 text-slate-300">
+                #{{ log.case_id }}
+              </td>
+
+              <td class="py-4 text-slate-300">
+                {{ log.access_reason }}
+              </td>
+
+              <td class="py-4 text-slate-400">
+                {{ log.created_at }}
+              </td>
+            </tr>
+            {% endfor %}
+
+            {% if recent_logs|length == 0 %}
+            <tr>
+              <td colspan="4" class="py-8 text-center text-slate-400">
+                لا توجد سجلات وصول بعد.
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+</body>
+</html>
