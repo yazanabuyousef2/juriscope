@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}حالات الاستخدام – Mizan{% endblock %}
+
+{% block content %}
+<section class="py-24 px-4">
+  <div class="max-w-7xl mx-auto">
+
+    <div class="text-center mb-16">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-xs font-medium mb-5">💼 حالات الاستخدام</div>
+      <h1 class="text-4xl sm:text-5xl font-bold mb-5">حالات استخدام <span class="text-gradient">Mizan</span></h1>
+      <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+        من النزاعات الشخصية إلى قضايا الأعمال والقضايا الجنائية، يساعدك Mizan على فهم الصورة القانونية بوضوح وحذر.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      {% set cases = [
+        ('🤝', 'نزاعات الشراكة والأعمال', 'تجاري / شركات',
+         'خلافات بين الشركاء حول الحصص، الانسحاب، العملاء، البيانات، أو الإدارة.',
+         ['انسحاب شريك وأخذ العملاء', 'نزاع على الحصص', 'إساءة استخدام بيانات الشركة']),
+        ('📑', 'الإخلال بالعقود', 'عقود',
+         'تحليل أولي لحالات عدم تنفيذ الالتزامات أو التأخر في الدفع أو مخالفة بنود الاتفاق.',
+         ['عدم تنفيذ عقد', 'تأخر التسليم', 'مطالبة مالية بسبب إخلال']),
+        ('👷', 'قضايا العمل والموظفين', 'عمالي',
+         'فهم المخاطر والحقوق في إنهاء العمل، الأجور، الإنذارات، أو النزاعات مع صاحب العمل.',
+         ['إنهاء دون إشعار', 'مطالبة برواتب', 'نزاع حول عقد العمل']),
+        ('🏠', 'نزاعات المؤجر والمستأجر', 'إيجارات',
+         'تحليل النزاعات المتعلقة بالأجرة، الإخلاء، التأمينات، أو التزامات الصيانة.',
+         ['عدم دفع أجرة', 'إخلاء', 'استرداد تأمين']),
+        ('🛡️', 'القضايا الجنائية', 'جنائي',
+         'تحليل حذر للفعل المنسوب، المخاطر، الأدلة، والعقوبة المحتملة في حال ثبوت الفعل دون اعتبار الشخص مذنبًا.',
+         ['اتهام أولي', 'وجود سوابق', 'تقدير نطاق عقوبة محتمل']),
+        ('💳', 'الشيكات والمطالبات المالية', 'مطالبات مالية',
+         'فهم الموقف القانوني في الشيكات، الديون، الفواتير، والمطالبات التجارية أو الشخصية.',
+         ['شيك مرتجع', 'دين غير مدفوع', 'فاتورة متأخرة']),
+        ('👨‍👩‍👧', 'الأحوال الشخصية', 'أحوال شخصية',
+         'تنظيم الأسئلة المتعلقة بالنفقة، الحضانة، الزواج، الطلاق، أو الحقوق الأسرية بحسب الدولة.',
+         ['نفقة', 'حضانة', 'طلاق وحقوق مالية']),
+        ('💡', 'الملكية الفكرية', 'ملكية فكرية',
+         'تحليل أولي لمشاكل العلامات التجارية، المحتوى، التصاميم، أو استخدام الأعمال دون إذن.',
+         ['تقليد علامة', 'سرقة تصميم', 'استخدام محتوى بدون إذن']),
+        ('🏛️', 'القضايا الإدارية', 'إداري',
+         'مساعدة أولية في فهم النزاعات مع الجهات الإدارية أو القرارات الحكومية القابلة للطعن.',
+         ['قرار إداري', 'مخالفة تنظيمية', 'اعتراض أو تظلم'])
+      ] %}
+
+      {% for icon, title, category, desc, examples in cases %}
+      <div class="glass-card rounded-2xl p-6 border border-white/10 hover:border-gold-400/30 transition-all">
+        <div class="flex items-start justify-between mb-4">
+          <div class="w-12 h-12 rounded-2xl bg-gold-400/10 border border-gold-400/20 flex items-center justify-center text-2xl">{{ icon }}</div>
+          <span class="text-[11px] px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-400">{{ category }}</span>
+        </div>
+        <h3 class="text-lg font-bold mb-3">{{ title }}</h3>
+        <p class="text-sm text-slate-400 leading-relaxed mb-5">{{ desc }}</p>
+        <div class="space-y-2 mb-5">
+          {% for ex in examples %}
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-gold-400"></span>
+            {{ ex }}
+          </div>
+          {% endfor %}
+        </div>
+        <a href="/assistant?q={{ examples[0] }}" class="inline-flex items-center gap-2 text-sm text-gold-400 hover:text-gold-300 transition-all">
+          جرّب هذه الحالة ←
+        </a>
+      </div>
+      {% endfor %}
+
+    </div>
+
+    <div class="mt-16 glass-card rounded-3xl p-10 border border-white/10 relative overflow-hidden text-center">
+      <div class="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-gold-400/10"></div>
+      <div class="relative">
+        <h2 class="text-2xl font-bold mb-3">حالتك غير موجودة في القائمة؟</h2>
+        <p class="text-slate-400 mb-6 text-sm">اختر الدولة ونوع القضية واشرح حالتك بكلماتك الخاصة وسيتولى Mizan تنظيم التحليل.</p>
+        <a href="/assistant" class="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gold-400 text-navy-950 font-bold hover:bg-gold-500 transition-all shadow-xl shadow-gold-400/25">
+          اكتب حالتك الآن
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

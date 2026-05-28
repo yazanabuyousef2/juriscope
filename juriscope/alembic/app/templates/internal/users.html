@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>إدارة المستخدمين | Mizan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.13), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(80, 70, 180, 0.12), transparent 30%),
+        #070b16;
+      min-height: 100vh;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    select option {
+      color: #000;
+    }
+  </style>
+</head>
+
+<body class="text-white">
+
+  <header class="border-b border-white/10 bg-black/20">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+
+      <div>
+        <h1 class="text-xl font-bold">Mizan Internal</h1>
+        <p class="text-xs text-slate-400 mt-1">
+          إدارة المستخدمين —
+          <span class="text-yellow-300">{{ staff.full_name }}</span>
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/internal/dashboard" class="text-sm text-slate-300 hover:text-yellow-300">
+          لوحة التحكم
+        </a>
+
+        <a href="/logout" class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition">
+          تسجيل الخروج
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-10">
+
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold mb-3">
+        إدارة المستخدمين
+      </h2>
+
+      <p class="text-slate-400 leading-relaxed max-w-3xl">
+        من هنا يمكنك متابعة المستخدمين، تغيير نوع المستخدم، تغيير الباقة، وتفعيل أو تعطيل الحساب. حذف المستخدمين متاح فقط للـ Super Admin.
+      </p>
+    </div>
+
+    {% if error %}
+    <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
+      {% if error == "invalid_user_role" %}
+        نوع المستخدم غير صحيح.
+      {% elif error == "user_not_found" %}
+        المستخدم غير موجود.
+      {% elif error == "plan_not_found" %}
+        الباقة غير موجودة أو غير مفعلة.
+      {% elif error == "cannot_delete_has_data" %}
+        لا يمكن حذف هذا المستخدم لأن لديه بيانات مرتبطة مثل قضايا أو تحليلات أو مستندات. يمكنك تعطيل الحساب بدلًا من حذفه.
+      {% else %}
+        حدث خطأ أثناء تنفيذ العملية.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
+      {% if success == "updated" %}
+        تم تحديث بيانات المستخدم بنجاح.
+      {% elif success == "status_updated" %}
+        تم تحديث حالة المستخدم بنجاح.
+      {% elif success == "deleted" %}
+        تم حذف المستخدم بنجاح.
+      {% else %}
+        تمت العملية بنجاح.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <section class="grid sm:grid-cols-4 gap-5 mb-8">
+      <div class="glass-card rounded-3xl border border-white/10 p-5">
+        <div class="text-sm text-slate-400 mb-2">إجمالي المستخدمين</div>
+        <div class="text-3xl font-bold text-white">{{ stats.total_users }}</div>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-green-400/20 p-5">
+        <div class="text-sm text-green-200 mb-2">المستخدمون الفعالون</div>
+        <div class="text-3xl font-bold text-green-300">{{ stats.active_users }}</div>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-red-400/20 p-5">
+        <div class="text-sm text-red-200 mb-2">المستخدمون المعطلون</div>
+        <div class="text-3xl font-bold text-red-300">{{ stats.inactive_users }}</div>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-yellow-400/20 p-5">
+        <div class="text-sm text-yellow-200 mb-2">المعروض حاليًا</div>
+        <div class="text-3xl font-bold text-yellow-300">{{ stats.shown_users }}</div>
+      </div>
+    </section>
+
+    <section class="glass-card rounded-3xl border border-white/10 p-6 mb-8">
+      <h3 class="text-xl font-bold mb-5">فلترة المستخدمين</h3>
+
+      <form method="get" action="/internal/users" class="grid lg:grid-cols-5 gap-4">
+
+        <div class="lg:col-span-2">
+          <label class="block text-sm text-slate-300 mb-2">بحث</label>
+          <input
+            type="text"
+            name="search"
+            value="{{ search }}"
+            placeholder="اسم، بريد، هاتف..."
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-yellow-400"
+          >
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">نوع المستخدم</label>
+          <select
+            name="role"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+          >
+            <option value="">الكل</option>
+            {% for key, label in user_roles.items() %}
+            <option value="{{ key }}" {% if role_filter == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">الباقة</label>
+          <select
+            name="plan"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+          >
+            <option value="">الكل</option>
+            {% for plan in plans %}
+            <option value="{{ plan.code }}" {% if plan_filter == plan.code %}selected{% endif %}>
+              {{ plan.name_ar or plan.name_en or plan.code }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">الحالة</label>
+          <select
+            name="status"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+          >
+            <option value="">الكل</option>
+            <option value="active" {% if status_filter == "active" %}selected{% endif %}>فعال</option>
+            <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>معطل</option>
+          </select>
+        </div>
+
+        <div class="lg:col-span-5 flex gap-3">
+          <button
+            type="submit"
+            class="rounded-xl bg-yellow-500 px-6 py-3 text-slate-950 font-bold hover:bg-yellow-400 transition"
+          >
+            تطبيق الفلترة
+          </button>
+
+          <a
+            href="/internal/users"
+            class="rounded-xl bg-white/10 border border-white/10 px-6 py-3 text-white font-bold hover:bg-white/15 transition"
+          >
+            إعادة ضبط
+          </a>
+        </div>
+
+      </form>
+    </section>
+
+    <section class="glass-card rounded-3xl border border-white/10 p-6">
+      <h3 class="text-xl font-bold mb-5">قائمة المستخدمين</h3>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-white/10 text-slate-400">
+              <th class="py-3 text-right">المستخدم</th>
+              <th class="py-3 text-right">الدولة</th>
+              <th class="py-3 text-right">نوع المستخدم</th>
+              <th class="py-3 text-right">الباقة</th>
+              <th class="py-3 text-right">الحالة</th>
+              <th class="py-3 text-right">تاريخ التسجيل</th>
+              <th class="py-3 text-right">إجراءات</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for item in users %}
+            <tr class="border-b border-white/5 align-top">
+              <td class="py-4">
+                <div class="font-semibold text-white">
+                  {{ item.full_name }}
+                </div>
+
+                <div class="text-xs text-slate-500 mt-1">
+                  {{ item.email }}
+                </div>
+
+                {% if item.phone %}
+                <div class="text-xs text-slate-500 mt-1">
+                  {{ item.phone_country_code }} {{ item.phone }}
+                </div>
+                {% endif %}
+              </td>
+
+              <td class="py-4 text-slate-300">
+                {{ item.country_name or item.country_code or "غير محدد" }}
+              </td>
+
+              <td class="py-4">
+                <span class="inline-flex rounded-full bg-blue-500/10 border border-blue-400/30 px-3 py-1 text-xs text-blue-200">
+                  {{ user_roles.get(item.user_role, item.user_role) }}
+                </span>
+              </td>
+
+              <td class="py-4">
+                <span class="inline-flex rounded-full bg-yellow-500/10 border border-yellow-400/30 px-3 py-1 text-xs text-yellow-200">
+                  {{ item.plan_code }}
+                </span>
+              </td>
+
+              <td class="py-4">
+                {% if item.is_active %}
+                <span class="inline-flex rounded-full bg-green-500/10 border border-green-400/30 px-3 py-1 text-xs text-green-200">
+                  فعال
+                </span>
+                {% else %}
+                <span class="inline-flex rounded-full bg-red-500/10 border border-red-400/30 px-3 py-1 text-xs text-red-200">
+                  معطل
+                </span>
+                {% endif %}
+              </td>
+
+              <td class="py-4 text-slate-400">
+                {{ item.created_at }}
+              </td>
+
+              <td class="py-4 space-y-3">
+                <form method="post" action="/internal/users/update" class="space-y-2">
+                  <input type="hidden" name="user_id" value="{{ item.id }}">
+
+                  <div class="flex flex-wrap gap-2">
+                    <select
+                      name="user_role"
+                      class="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-400"
+                    >
+                      {% for key, label in user_roles.items() %}
+                      <option value="{{ key }}" {% if item.user_role == key %}selected{% endif %}>
+                        {{ label }}
+                      </option>
+                      {% endfor %}
+                    </select>
+
+                    <select
+                      name="plan_code"
+                      class="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-400"
+                    >
+                      {% for plan in plans %}
+                      <option value="{{ plan.code }}" {% if item.plan_code == plan.code %}selected{% endif %}>
+                        {{ plan.name_ar or plan.name_en or plan.code }}
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+
+                  <button
+                    type="submit"
+                    class="rounded-xl bg-white/10 px-3 py-2 text-xs text-white hover:bg-white/15 transition"
+                  >
+                    حفظ التعديل
+                  </button>
+                </form>
+
+                <form method="post" action="/internal/users/toggle-active">
+                  <input type="hidden" name="user_id" value="{{ item.id }}">
+
+                  <button
+                    type="submit"
+                    class="rounded-xl {% if item.is_active %}bg-red-500/15 border-red-400/30 text-red-200{% else %}bg-green-500/15 border-green-400/30 text-green-200{% endif %} border px-3 py-2 text-xs hover:bg-white/10 transition"
+                  >
+                    {% if item.is_active %}
+                      تعطيل الحساب
+                    {% else %}
+                      تفعيل الحساب
+                    {% endif %}
+                  </button>
+                </form>
+
+                {% if can_delete_users %}
+                <form method="post" action="/internal/users/delete" onsubmit="return confirm('هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع عن هذه العملية.');">
+                  <input type="hidden" name="user_id" value="{{ item.id }}">
+
+                  <button
+                    type="submit"
+                    class="rounded-xl bg-red-600/20 border border-red-500/40 px-3 py-2 text-xs text-red-200 hover:bg-red-600/30 transition"
+                  >
+                    حذف المستخدم
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+
+            {% if users|length == 0 %}
+            <tr>
+              <td colspan="7" class="py-8 text-center text-slate-400">
+                لا يوجد مستخدمون مطابقون للبحث.
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+</body>
+</html>

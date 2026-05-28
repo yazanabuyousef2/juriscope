@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}الملف الشخصي – Mizan{% endblock %}
+{% block content %}
+<section class="py-12 px-4 min-h-screen">
+  <div class="max-w-6xl mx-auto">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold">الملف الشخصي</h1>
+      <p class="text-slate-400 mt-2">إدارة حسابك، باقتك، واستخدامك الشهري.</p>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6">
+      <div class="glass-card rounded-3xl border border-white/10 p-6">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="/static/images/mizan-logo.png" class="w-16 h-16 object-contain rounded-xl">
+          <div>
+            <h2 class="text-xl font-bold">{{ user.full_name }}</h2>
+            <p class="text-sm text-slate-400">{{ user.email }}</p>
+          </div>
+        </div>
+        <div class="rounded-2xl bg-gold-400/10 border border-gold-400/20 p-4">
+          <div class="text-xs text-gold-400 mb-1">الباقة الحالية</div>
+          <div class="text-2xl font-bold">{{ plan_names.get(user.plan, 'المجانية') if plan_names else user.plan }}</div>
+        </div>
+        <a href="/pricing" class="mt-4 block text-center py-3 rounded-xl border border-white/10 hover:border-gold-400/40 hover:text-gold-400 transition-all">عرض الباقات</a>
+      </div>
+
+      <div class="lg:col-span-2 grid sm:grid-cols-3 gap-4">
+        <div class="glass-card rounded-2xl border border-white/10 p-5">
+          <div class="text-xs text-slate-400 mb-2">التحليلات هذا الشهر</div>
+          <div class="text-3xl font-bold">{{ usage.analyses }}<span class="text-sm text-slate-500"> / {{ limits.analyses_per_month }}</span></div>
+        </div>
+        <div class="glass-card rounded-2xl border border-white/10 p-5">
+          <div class="text-xs text-slate-400 mb-2">المستندات هذا الشهر</div>
+          <div class="text-3xl font-bold">{{ usage.documents }}<span class="text-sm text-slate-500"> / {{ limits.documents_per_month }}</span></div>
+        </div>
+        <div class="glass-card rounded-2xl border border-white/10 p-5">
+          <div class="text-xs text-slate-400 mb-2">القضايا</div>
+          <div class="text-3xl font-bold">{{ usage.cases }}<span class="text-sm text-slate-500"> / {{ limits.cases }}</span></div>
+        </div>
+        <div class="sm:col-span-3 glass-card rounded-2xl border border-white/10 p-6">
+          <h3 class="font-semibold mb-4">اختصارات سريعة</h3>
+          <div class="grid sm:grid-cols-3 gap-3">
+            <a href="/assistant" class="rounded-xl bg-gold-400 text-navy-950 font-semibold p-4 text-center">استخدام المساعد</a>
+            <a href="/cases/new" class="rounded-xl bg-white/10 hover:bg-white/15 p-4 text-center">إنشاء قضية</a>
+            <a href="/cases" class="rounded-xl bg-white/10 hover:bg-white/15 p-4 text-center">قضاياي</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>دخول الموظفين | Mizan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.16), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(80, 70, 180, 0.14), transparent 30%),
+        #070b16;
+      min-height: 100vh;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    }
+  </style>
+</head>
+
+<body class="text-white">
+
+  <main class="min-h-screen flex items-center justify-center px-4 py-10">
+
+    <div class="w-full max-w-md">
+
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-yellow-500/15 border border-yellow-400/30 mb-4">
+          <span class="text-3xl">⚖️</span>
+        </div>
+
+        <h1 class="text-3xl font-bold mb-2">
+          دخول موظفي Mizan
+        </h1>
+
+        <p class="text-slate-400 text-sm leading-relaxed">
+          هذه الصفحة مخصصة لفريق ميزان فقط.
+        </p>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-white/10 p-6">
+
+        {% if error %}
+        <div class="mb-5 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
+          {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/internal/login" class="space-y-5">
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">البريد الإلكتروني</label>
+            <input
+              type="email"
+              name="email"
+              required
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-yellow-400"
+              placeholder="owner@mizan.local"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">كلمة المرور</label>
+            <input
+              type="password"
+              name="password"
+              required
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-yellow-400"
+              placeholder="••••••••"
+            >
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-xl bg-yellow-500 px-6 py-3 text-slate-950 font-bold hover:bg-yellow-400 transition"
+          >
+            دخول لوحة التحكم
+          </button>
+        </form>
+
+        <div class="mt-6 rounded-xl border border-yellow-400/20 bg-yellow-400/10 p-4 text-xs text-yellow-100 leading-relaxed">
+          أول دخول افتراضي للتطوير:
+          <br>
+          <strong>Email:</strong> owner@mizan.local
+          <br>
+          <strong>Password:</strong> ChangeMe@123
+          <br>
+          غيّرها لاحقًا من شاشة الموظفين.
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+</body>
+</html>

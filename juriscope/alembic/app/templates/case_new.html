@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}إنشاء قضية جديدة | Mizan{% endblock %}
+
+{% block content %}
+{% set usage = usage|default({'analyses': 0, 'documents': 0, 'cases': 0}) %}
+{% set limits = limits|default({'analyses_per_month': 999999, 'documents_per_month': 999999, 'cases': 999999}) %}
+
+<section class="min-h-screen py-12 px-4">
+  <div class="max-w-4xl mx-auto">
+
+    <div class="text-center mb-10">
+      <h1 class="text-3xl sm:text-4xl font-bold text-white mb-3">
+        إنشاء قضية جديدة
+      </h1>
+      <p class="text-slate-300">
+        أنشئ ملفًا مستقلًا للقضية لحفظ الأسئلة، الملفات، المستجدات، والملاحظات الخاصة.
+      </p>
+    </div>
+
+    <div class="glass-card rounded-3xl border border-white/10 p-6 md:p-8">
+
+      {% if error %}
+      <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      {% if allowed == false %}
+      <div class="rounded-xl border border-gold-400/30 bg-gold-400/10 p-5 text-slate-200">
+        <p class="mb-4">
+          لا يمكنك إنشاء قضية جديدة ضمن حدود باقتك الحالية.
+        </p>
+        <a href="/pricing" class="inline-flex items-center justify-center rounded-xl bg-gold-500 px-5 py-3 text-navy-950 font-semibold hover:bg-gold-400 transition">
+          ترقية الباقة
+        </a>
+      </div>
+      {% else %}
+
+      <form method="post" action="/cases/new" class="space-y-5">
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">عنوان القضية</label>
+          <input
+            type="text"
+            name="title"
+            required
+            placeholder="مثال: نزاع شراكة مع المدير المالي"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
+          >
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">الدولة</label>
+            <select
+              name="country"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+            >
+              <option value="الأردن" class="text-black">الأردن</option>
+              <option value="السعودية" class="text-black">السعودية</option>
+              <option value="الإمارات" class="text-black">الإمارات</option>
+              <option value="مصر" class="text-black">مصر</option>
+              <option value="العراق" class="text-black">العراق</option>
+              <option value="قطر" class="text-black">قطر</option>
+              <option value="الكويت" class="text-black">الكويت</option>
+              <option value="البحرين" class="text-black">البحرين</option>
+              <option value="عُمان" class="text-black">عُمان</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">نوع القضية</label>
+            <select
+              name="case_type"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+            >
+              <option value="مدني" class="text-black">مدني</option>
+              <option value="تجاري" class="text-black">تجاري</option>
+              <option value="عقود" class="text-black">عقود</option>
+              <option value="شركات" class="text-black">شركات</option>
+              <option value="عمالي" class="text-black">عمالي</option>
+              <option value="إيجارات" class="text-black">إيجارات</option>
+              <option value="أحوال شخصية" class="text-black">أحوال شخصية</option>
+              <option value="جنائي" class="text-black">جنائي</option>
+              <option value="شيكات ومطالبات مالية" class="text-black">شيكات ومطالبات مالية</option>
+              <option value="ملكية فكرية" class="text-black">ملكية فكرية</option>
+              <option value="إداري" class="text-black">إداري</option>
+              <option value="أخرى" class="text-black">أخرى</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">اسم الخصم / الطرف الآخر</label>
+          <input
+            type="text"
+            name="opponent_name"
+            placeholder="اختياري"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
+          >
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">اسم المحكمة</label>
+            <input
+              type="text"
+              name="court_name"
+              placeholder="اختياري"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">رقم القضية</label>
+            <input
+              type="text"
+              name="case_number"
+              placeholder="اختياري"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
+            >
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">حالة القضية</label>
+          <select
+            name="status"
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-gold-400"
+          >
+            <option value="مفتوحة" class="text-black">مفتوحة</option>
+            <option value="قيد المتابعة" class="text-black">قيد المتابعة</option>
+            <option value="بانتظار جلسة" class="text-black">بانتظار جلسة</option>
+            <option value="بانتظار مستندات" class="text-black">بانتظار مستندات</option>
+            <option value="مغلقة" class="text-black">مغلقة</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm text-slate-300 mb-2">ملخص أولي للقضية</label>
+          <textarea
+            name="summary"
+            rows="4"
+            placeholder="اكتب وصفًا مختصرًا للقضية، أو اتركه فارغًا."
+            class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-gold-400"
+          ></textarea>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full rounded-xl bg-gold-500 px-6 py-3 text-navy-950 font-bold hover:bg-gold-400 transition"
+        >
+          إنشاء القضية
+        </button>
+
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

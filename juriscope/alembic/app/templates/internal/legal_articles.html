@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>إدارة المواد القانونية | Mizan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.13), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(80, 70, 180, 0.12), transparent 30%),
+        #070b16;
+      min-height: 100vh;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    }
+
+    select option {
+      color: #000;
+    }
+
+    textarea {
+      min-height: 180px;
+    }
+  </style>
+</head>
+
+<body class="text-white">
+
+  <header class="border-b border-white/10 bg-black/20">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+
+      <div>
+        <h1 class="text-xl font-bold">Mizan Internal</h1>
+        <p class="text-xs text-slate-400 mt-1">
+          إدارة المواد القانونية —
+          <span class="text-yellow-300">{{ staff.full_name }}</span>
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/internal/dashboard" class="text-sm text-slate-300 hover:text-yellow-300">
+          لوحة التحكم
+        </a>
+
+        <a href="/internal/legal-documents" class="text-sm text-slate-300 hover:text-yellow-300">
+          التشريعات
+        </a>
+
+        <a href="/logout" class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition">
+          تسجيل الخروج
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-10">
+
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold mb-3">
+        إدارة المواد القانونية
+      </h2>
+
+      <p class="text-slate-400 leading-relaxed max-w-3xl">
+        هنا يتم إدخال نصوص المواد القانونية وربطها بالتشريع الصحيح. المساعد القانوني سيعتمد لاحقًا على المواد المعتمدة فقط.
+      </p>
+    </div>
+
+    {% if error %}
+    <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
+      {% if error == "missing_article_number" %}
+        يرجى إدخال رقم المادة.
+      {% elif error == "missing_article_text" %}
+        يرجى إدخال نص المادة.
+      {% elif error == "invalid_status" %}
+        حالة المادة غير صحيحة.
+      {% elif error == "invalid_review_status" %}
+        حالة المراجعة غير صحيحة.
+      {% elif error == "document_not_found" %}
+        التشريع غير موجود.
+      {% elif error == "article_not_found" %}
+        المادة غير موجودة.
+      {% else %}
+        حدث خطأ أثناء تنفيذ العملية.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
+      {% if success == "created" %}
+        تم إنشاء المادة القانونية بنجاح.
+      {% elif success == "status_updated" %}
+        تم تحديث حالة المادة بنجاح.
+      {% else %}
+        تمت العملية بنجاح.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <section class="grid lg:grid-cols-3 gap-6">
+
+      <div class="glass-card rounded-3xl border border-white/10 p-6 lg:col-span-1">
+        <h3 class="text-xl font-bold mb-5">إضافة مادة قانونية</h3>
+
+        <form method="post" action="/internal/legal-articles/create" class="space-y-5">
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">التشريع</label>
+            <select
+              name="document_id"
+              required
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            >
+              {% for doc in documents %}
+              <option value="{{ doc.id }}" {% if selected_document and selected_document.id == doc.id %}selected{% endif %}>
+                {{ doc.title_ar }}
+              </option>
+              {% endfor %}
+            </select>
+
+            {% if documents|length == 0 %}
+            <p class="text-xs text-red-300 mt-2">
+              يجب إضافة تشريع أولًا قبل إدخال المواد.
+            </p>
+            {% endif %}
+          </div>
+
+          {% if selected_document %}
+          <div class="rounded-xl bg-yellow-500/10 border border-yellow-400/20 p-4 text-xs text-yellow-100 leading-relaxed">
+            التشريع المحدد:
+            <strong>{{ selected_document.title_ar }}</strong>
+          </div>
+          {% endif %}
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">رقم المادة</label>
+            <input
+              type="text"
+              name="article_number"
+              required
+              placeholder="مثال: 256"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">عنوان المادة</label>
+            <input
+              type="text"
+              name="article_title"
+              placeholder="اختياري"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            >
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">نص المادة</label>
+            <textarea
+              name="article_text"
+              required
+              placeholder="اكتب نص المادة القانونية كما ورد في المصدر الرسمي..."
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            ></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">الباب</label>
+              <input
+                type="text"
+                name="chapter"
+                placeholder="اختياري"
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+              >
+            </div>
+
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">الفصل</label>
+              <input
+                type="text"
+                name="section"
+                placeholder="اختياري"
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+              >
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">تاريخ النفاذ</label>
+              <input
+                type="text"
+                name="effective_date"
+                placeholder="YYYY-MM-DD"
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+              >
+            </div>
+
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">تاريخ الإلغاء</label>
+              <input
+                type="text"
+                name="repealed_date"
+                placeholder="اختياري"
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+              >
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">حالة المادة</label>
+              <select
+                name="status"
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+              >
+                {% for key, label in article_statuses.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm text-slate-300 mb-2">حالة المراجعة</label>
+              <select
+                name="review_status"
+                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+              >
+                {% for key, label in review_statuses.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">ثقة المصدر</label>
+            <select
+              name="source_confidence"
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            >
+              {% for key, label in source_confidence.items() %}
+              <option value="{{ key }}" {% if key == "medium" %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-2">ملاحظات</label>
+            <textarea
+              name="notes"
+              placeholder="ملاحظات داخلية حول المادة..."
+              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
+            ></textarea>
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-xl bg-yellow-500 px-6 py-3 text-slate-950 font-bold hover:bg-yellow-400 transition"
+            {% if documents|length == 0 %}disabled{% endif %}
+          >
+            إضافة المادة
+          </button>
+        </form>
+      </div>
+
+      <div class="glass-card rounded-3xl border border-white/10 p-6 lg:col-span-2">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <h3 class="text-xl font-bold">قائمة المواد القانونية</h3>
+
+          <form method="get" action="/internal/legal-articles" class="flex gap-2">
+            <select
+              name="document_id"
+              class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white text-sm focus:outline-none focus:border-yellow-400"
+            >
+              <option value="">كل التشريعات</option>
+              {% for doc in documents %}
+              <option value="{{ doc.id }}" {% if selected_document and selected_document.id == doc.id %}selected{% endif %}>
+                {{ doc.title_ar }}
+              </option>
+              {% endfor %}
+            </select>
+
+            <button
+              type="submit"
+              class="rounded-xl bg-white/10 px-4 py-3 text-sm text-white hover:bg-white/15 transition"
+            >
+              فلترة
+            </button>
+          </form>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-white/10 text-slate-400">
+                <th class="py-3 text-right">المادة</th>
+                <th class="py-3 text-right">التشريع</th>
+                <th class="py-3 text-right">الدولة</th>
+                <th class="py-3 text-right">الحالة</th>
+                <th class="py-3 text-right">المراجعة</th>
+                <th class="py-3 text-right">إجراءات</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for article in articles %}
+              {% set doc = document_map.get(article.document_id) %}
+              {% set country = country_map.get(article.country_id) %}
+
+              <tr class="border-b border-white/5 align-top">
+                <td class="py-4">
+                  <div class="font-semibold text-white">
+                    المادة {{ article.article_number }}
+                  </div>
+
+                  {% if article.article_title %}
+                  <div class="text-xs text-slate-400 mt-1">
+                    {{ article.article_title }}
+                  </div>
+                  {% endif %}
+
+                  <div class="text-xs text-slate-500 mt-2 max-w-md leading-relaxed">
+                    {{ article.article_text[:180] }}{% if article.article_text|length > 180 %}...{% endif %}
+                  </div>
+                </td>
+
+                <td class="py-4 text-slate-300">
+                  {{ doc.title_ar if doc else "غير محدد" }}
+                </td>
+
+                <td class="py-4 text-slate-300">
+                  {{ country.name_ar if country else "غير محدد" }}
+                </td>
+
+                <td class="py-4">
+                  <span class="inline-flex rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs text-slate-200">
+                    {{ article_statuses.get(article.status, article.status) }}
+                  </span>
+                </td>
+
+                <td class="py-4">
+                  {% if article.review_status == "approved" %}
+                  <span class="inline-flex rounded-full bg-green-500/10 border border-green-400/30 px-3 py-1 text-xs text-green-200">
+                    معتمدة
+                  </span>
+                  {% elif article.review_status == "pending_review" %}
+                  <span class="inline-flex rounded-full bg-yellow-500/10 border border-yellow-400/30 px-3 py-1 text-xs text-yellow-200">
+                    بانتظار المراجعة
+                  </span>
+                  {% elif article.review_status == "rejected" %}
+                  <span class="inline-flex rounded-full bg-red-500/10 border border-red-400/30 px-3 py-1 text-xs text-red-200">
+                    مرفوضة
+                  </span>
+                  {% else %}
+                  <span class="inline-flex rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs text-slate-200">
+                    {{ review_statuses.get(article.review_status, article.review_status) }}
+                  </span>
+                  {% endif %}
+                </td>
+
+                <td class="py-4">
+                  <form method="post" action="/internal/legal-articles/update-status" class="space-y-2">
+                    <input type="hidden" name="article_id" value="{{ article.id }}">
+
+                    <div class="flex gap-2">
+                      <select
+                        name="status"
+                        class="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-400"
+                      >
+                        {% for key, label in article_statuses.items() %}
+                        <option value="{{ key }}" {% if article.status == key %}selected{% endif %}>
+                          {{ label }}
+                        </option>
+                        {% endfor %}
+                      </select>
+
+                      <select
+                        name="review_status"
+                        class="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-400"
+                      >
+                        {% for key, label in review_statuses.items() %}
+                        <option value="{{ key }}" {% if article.review_status == key %}selected{% endif %}>
+                          {{ label }}
+                        </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+
+                    <button
+                      type="submit"
+                      class="rounded-xl bg-white/10 px-3 py-2 text-xs text-white hover:bg-white/15 transition"
+                    >
+                      حفظ الحالة
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+
+              {% if articles|length == 0 %}
+              <tr>
+                <td colspan="6" class="py-8 text-center text-slate-400">
+                  لا توجد مواد قانونية بعد.
+                </td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</body>
+</html>

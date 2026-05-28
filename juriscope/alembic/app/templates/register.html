@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}إنشاء حساب – Mizan{% endblock %}
+{% block content %}
+<section class="min-h-screen flex items-center justify-center px-4 py-16">
+  <div class="w-full max-w-md glass-card border border-white/10 rounded-3xl p-8">
+    <div class="text-center mb-8">
+      <img src="/static/images/mizan-logo.png" class="w-20 h-20 object-contain mx-auto mb-4">
+      <h1 class="text-2xl font-bold">إنشاء حساب جديد</h1>
+      <p class="text-sm text-slate-400 mt-2">ابدأ بالباقة المجانية واحفظ تحليلاتك وقضاياك.</p>
+    </div>
+    {% if error %}
+      <div class="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm p-3">{{ error }}</div>
+    {% endif %}
+    <form method="post" class="space-y-4">
+      <input name="full_name" required class="form-input" placeholder="الاسم الكامل">
+      <input name="email" type="email" required class="form-input" placeholder="البريد الإلكتروني">
+      <input name="password" type="password" required class="form-input" placeholder="كلمة المرور">
+      <input name="confirm_password" type="password" required class="form-input" placeholder="تأكيد كلمة المرور">
+      <button class="w-full py-3 rounded-xl bg-gold-400 text-navy-950 font-semibold hover:bg-gold-500 transition-all">إنشاء الحساب</button>
+    </form>
+    <p class="text-center text-sm text-slate-400 mt-6">لديك حساب؟ <a href="/login" class="text-gold-400 hover:text-gold-300">تسجيل الدخول</a></p>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}المميزات – Mizan{% endblock %}
+
+{% block content %}
+<section class="py-24 px-4">
+  <div class="max-w-7xl mx-auto">
+
+    <div class="text-center mb-16">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-xs font-medium mb-5">✨ المميزات</div>
+      <h1 class="text-4xl sm:text-5xl font-bold mb-5">مميزات <span class="text-gradient">Mizan</span></h1>
+      <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+        كل ما تحتاجه لفهم موقفك القانوني قبل اتخاذ أي خطوة، مع تحليل يتأثر بالدولة المختارة ونوع القضية والباقة.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      {% set features = [
+        ('🌍', 'اختيار الدولة', 'اختر الدولة ليقوم Mizan بتكييف التحليل وفق النظام القانوني المختار مع التنبيه أن الدقة النهائية تتطلب الرجوع للنصوص الرسمية.'),
+        ('🏷️', 'تصنيف قانوني فوري', 'يحدد نوع القضية والتكييف الأولي: مدني، تجاري، عمالي، جنائي، عقود، شركات، أحوال شخصية أو غير ذلك.'),
+        ('⚠️', 'تحليل المخاطر', 'يعرض أهم المخاطر القانونية والعملية التي يجب الانتباه لها قبل التواصل مع الطرف الآخر أو اتخاذ إجراء.'),
+        ('⚖️', 'دعم القضايا الجنائية', 'يحلل القضايا الجنائية بحذر باستخدام عبارات مثل الفعل المنسوب وفي حال ثبوت الفعل دون اعتبار الشخص مذنبًا.'),
+        ('📉', 'نطاق العقوبة المحتمل', 'في القضايا الجنائية يعرض نطاقًا عامًا للعقوبة المحتملة والعوامل التي قد تشددها أو تخففها دون ضمان نتيجة قضائية.'),
+        ('📄', 'قائمة المستندات المطلوبة', 'يقترح المستندات والأدلة التي يحتاجها المستخدم أو المحامي لفهم الملف وتقييم الموقف.'),
+        ('🔍', 'حالات مشابهة', 'يعرض حالات مشابهة بصياغة عامة ومبادئ قانونية دون اختراع أسماء أحكام غير مؤكدة.'),
+        ('💼', 'باقات حسب مستوى التحليل', 'الباقة المجانية مختصرة، الأفراد أكثر تفصيلًا، الأعمال تركّز على المخاطر التجارية، والمحامون بصياغة احترافية.'),
+        ('🧠', 'قابل للتطوير بمصادر رسمية', 'يمكن لاحقًا ربط Mizan بقواعد قوانين وأحكام رسمية لكل دولة لرفع الدقة والموثوقية.')
+      ] %}
+
+      {% for icon, title, desc in features %}
+      <div class="glass-card rounded-2xl p-6 border border-white/10 hover:border-gold-400/25 transition-all">
+        <div class="w-12 h-12 rounded-2xl bg-gold-400/10 border border-gold-400/20 flex items-center justify-center text-2xl mb-5">{{ icon }}</div>
+        <h3 class="text-lg font-bold mb-3">{{ title }}</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">{{ desc }}</p>
+      </div>
+      {% endfor %}
+
+    </div>
+
+    <div class="mt-16 glass-card rounded-3xl p-8 border border-yellow-500/20 bg-yellow-500/5">
+      <h2 class="text-xl font-bold mb-3">تنبيه مهم حول الدقة القانونية</h2>
+      <p class="text-sm text-slate-400 leading-relaxed">
+        التحليل حسب الدولة يساعد على توجيه الإجابة، لكنه لا يغني عن ربط النظام بمصادر قانونية رسمية لكل دولة ولا عن مراجعة محامٍ مرخص، خصوصًا في القضايا الجنائية أو عالية المخاطر.
+      </p>
+    </div>
+
+    <div class="text-center mt-16">
+      <a href="/assistant" class="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gold-400 text-navy-950 font-bold hover:bg-gold-500 transition-all shadow-2xl shadow-gold-400/30">
+        جرّب المساعد الآن
+      </a>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
