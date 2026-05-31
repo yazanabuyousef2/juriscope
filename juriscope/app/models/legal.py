@@ -150,6 +150,11 @@ class LegalArticle(Base):
         cascade="all, delete-orphan",
     )
 
+    relations: Mapped[list["LegalArticleRelation"]] = relationship(
+        back_populates="article",
+        cascade="all, delete-orphan",
+    )
+
 
 class LegalArticleVersion(Base):
     __tablename__ = "legal_article_versions"
@@ -252,6 +257,31 @@ class LegalArticleKeyword(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     article: Mapped["LegalArticle"] = relationship(back_populates="keywords")
+
+
+class LegalArticleRelation(Base):
+    __tablename__ = "legal_article_relations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("legal_articles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    relation_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    # link, amendment, case_law, related_legislation, interpretation, raw_note
+
+    title: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    reference_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    source_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    article: Mapped["LegalArticle"] = relationship(back_populates="relations")
 
 
 class LegalImportJob(Base):

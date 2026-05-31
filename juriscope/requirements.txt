@@ -6,6 +6,11 @@ pydantic
 openai
 python-dotenv
 google-genai
-sqlalchemy
 psycopg2-binary
+SQLAlchemy==2.0.36
+alembic==1.13.3
+psycopg2-binary==2.9.10
+python-dotenv==1.0.1
+pypdf
 requests
+passlib[bcrypt]

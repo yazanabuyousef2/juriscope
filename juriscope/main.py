@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.database import init_db
+from app.production_schema import ensure_production_schema
 
 from app.routes.pages import router as pages_router
 from app.routes.api import router as api_router
@@ -35,13 +36,14 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_tasks():
     """
-    Production startup initialization.
+    Database startup initialization.
 
-    This uses DATABASE_URL from the environment.
-    It creates all required PostgreSQL tables if they do not exist,
-    and seeds default countries and subscription plans.
+    init_db() keeps legacy/public tables compatible.
+    ensure_production_schema() ensures the full production schema for
+    Supabase/PostgreSQL: staff, legal data, support, subscriptions, accounting.
     """
     init_db()
+    ensure_production_schema()
 
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

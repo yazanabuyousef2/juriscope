@@ -1,25 +1,78 @@
 {% extends "base.html" %}
+
 {% block title %}تسجيل الدخول – Mizan{% endblock %}
+
 {% block content %}
 <section class="min-h-screen flex items-center justify-center px-4 py-16">
   <div class="w-full max-w-md glass-card border border-white/10 rounded-3xl p-8">
+
     <div class="text-center mb-8">
-      <img src="/static/images/mizan-logo.png" class="w-20 h-20 object-contain mx-auto mb-4">
+      <img
+        src="/static/images/mizan-logo.png"
+        class="w-20 h-20 object-contain mx-auto mb-4"
+        alt="Mizan Logo"
+      >
+
       <h1 class="text-2xl font-bold">تسجيل الدخول</h1>
-      <p class="text-sm text-slate-400 mt-2">ادخل إلى حسابك. إذا كان البريد خاصًا بموظف أو Super Admin سيتم تحويلك تلقائيًا إلى لوحة التحكم الداخلية.</p>
+
+      <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+        ادخل إلى حسابك كمستخدم عادي للوصول إلى المساعد القانوني، القضايا، الدعم، والاشتراكات.
+      </p>
     </div>
+
     {% if error %}
-      <div class="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm p-3">{{ error }}</div>
+      <div class="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-200 text-sm p-3">
+        {{ error }}
+      </div>
     {% endif %}
+
     <form method="post" class="space-y-4">
-      <input name="email" type="email" required class="form-input" placeholder="البريد الإلكتروني">
-      <input name="password" type="password" required class="form-input" placeholder="كلمة المرور">
-      <button class="w-full py-3 rounded-xl bg-gold-400 text-navy-950 font-semibold hover:bg-gold-500 transition-all">دخول</button>
+      <input
+        name="email"
+        type="email"
+        required
+        class="form-input"
+        placeholder="البريد الإلكتروني"
+      >
+
+      <input
+        name="password"
+        type="password"
+        required
+        class="form-input"
+        placeholder="كلمة المرور"
+      >
+
+      <button
+        type="submit"
+        class="w-full py-3 rounded-xl bg-gold-400 text-navy-950 font-semibold hover:bg-gold-500 transition-all"
+      >
+        دخول المستخدم
+      </button>
     </form>
-    <div class="mt-6 space-y-2 text-center text-sm">
-      <p class="text-slate-400">لا تملك حسابًا؟ <a href="/register" class="text-gold-400 hover:text-gold-300">إنشاء حساب</a></p>
-      <p class="text-xs text-slate-500">نفس شاشة الدخول تعمل للمستخدمين والموظفين. دخول الموظف يمنحه وضع Staff Unlimited.</p>
+
+    <div class="mt-4">
+      <a
+        href="/internal/login"
+        class="inline-flex items-center justify-center w-full rounded-xl border border-gold-400/30 bg-white/5 px-4 py-3 text-sm font-semibold text-gold-300 hover:bg-gold-400/10 hover:border-gold-400/50 transition-all"
+      >
+        تسجيل الدخول كموظف
+      </a>
     </div>
+
+    <div class="mt-6 space-y-2 text-center text-sm">
+      <p class="text-slate-400">
+        لا تملك حسابًا؟
+        <a href="/register" class="text-gold-400 hover:text-gold-300">
+          إنشاء حساب
+        </a>
+      </p>
+
+      <p class="text-xs text-slate-500 leading-relaxed">
+        دخول المستخدمين منفصل عن دخول الموظفين. إذا كنت موظفًا أو Super Admin استخدم زر تسجيل الدخول كموظف.
+      </p>
+    </div>
+
   </div>
 </section>
 {% endblock %}

@@ -1,7 +1,20 @@
 import os
-import sqlite3
+import re
 import secrets
 from datetime import datetime, timedelta
+from typing import Optional
+
+from dotenv import load_dotenv
+from sqlalchemy import text
+
+load_dotenv(dotenv_path=".env")
+
+from app.db.session import Base, SessionLocal, engine
+
+try:
+    import app.db.base  # noqa: F401
+except Exception:
+    pass
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -12,201 +25,170 @@ os.makedirs(DATA_DIR, exist_ok=True)
 UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-DB_PATH = os.path.join(DATA_DIR, "mizan.db")
+LEGAL_UPLOAD_DIR = os.path.join(DATA_DIR, "legal_uploads")
+os.makedirs(LEGAL_UPLOAD_DIR, exist_ok=True)
+
+
+BOOLEAN_COLUMNS = [
+    "is_active",
+    "phone_verified",
+    "marketing_consent",
+    "staff_access_requires_reason",
+    "is_allowed",
+    "can_upload_documents",
+    "can_use_case_memory",
+    "can_export_pdf",
+    "can_export_word",
+    "can_access_advanced_analysis",
+    "can_use_legal_sources",
+]
 
 
 def now_iso() -> str:
     return datetime.utcnow().isoformat()
 
 
-def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def execute(query: str, params: tuple = ()):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    conn.commit()
-    last_id = cursor.lastrowid
-    conn.close()
-    return last_id
-
-
-def fetch_one(query: str, params: tuple = ()):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    row = cursor.fetchone()
-    conn.close()
-    return row
-
-
-def fetch_all(query: str, params: tuple = ()):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-
 def init_db():
-    conn = get_connection()
-    cursor = conn.cursor()
+    """
+    Initializes database tables using SQLAlchemy models and ensures the
+    production Supabase/PostgreSQL schema is complete.
+    """
+    Base.metadata.create_all(bind=engine)
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        full_name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        plan TEXT NOT NULL DEFAULT 'free',
-        is_active INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL
-    )
-    """)
+    from app.production_schema import ensure_production_schema
 
-    # توافق مع النسخ القديمة والجديدة:
-    # plan/plan_code = الاشتراك
-    # user_role = نوع المستخدم فقط
+    ensure_production_schema()
+
+
+def _normalize_legacy_sql(query: str) -> str:
+    """
+    Convert old SQLite-style SQL into PostgreSQL-safe SQL.
+    """
+    final_query = query
+
+    for column in BOOLEAN_COLUMNS:
+        final_query = re.sub(
+            rf"\b{column}\s*=\s*1\b",
+            f"{column} = true",
+            final_query,
+            flags=re.IGNORECASE,
+        )
+        final_query = re.sub(
+            rf"\b{column}\s*=\s*0\b",
+            f"{column} = false",
+            final_query,
+            flags=re.IGNORECASE,
+        )
+        final_query = re.sub(
+            rf"\b{column}\s*!=\s*1\b",
+            f"{column} != true",
+            final_query,
+            flags=re.IGNORECASE,
+        )
+        final_query = re.sub(
+            rf"\b{column}\s*!=\s*0\b",
+            f"{column} != false",
+            final_query,
+            flags=re.IGNORECASE,
+        )
+
+    return final_query
+
+
+def _convert_question_marks(query: str, params: tuple = ()):  # SQLite style ? -> SQLAlchemy binds
+    final_query = _normalize_legacy_sql(query)
+    bind_params = {}
+
+    for index, value in enumerate(params or ()): 
+        key = f"p{index}"
+        final_query = final_query.replace("?", f":{key}", 1)
+        bind_params[key] = value
+
+    return final_query, bind_params
+
+
+def _add_returning_id_if_needed(query: str) -> str:
+    stripped = query.strip()
+    lower = stripped.lower()
+
+    if not lower.startswith("insert"):
+        return query
+
+    if " returning " in lower:
+        return query
+
+    if stripped.endswith(";"):
+        stripped = stripped[:-1]
+
+    return stripped + " RETURNING id"
+
+
+def execute(query: str, params: tuple = ()): 
+    db = SessionLocal()
+
     try:
-        cursor.execute("ALTER TABLE users ADD COLUMN plan_code TEXT NOT NULL DEFAULT 'free'")
+        final_query, bind_params = _convert_question_marks(query, params)
+        final_query = _add_returning_id_if_needed(final_query)
+
+        result = db.execute(text(final_query), bind_params)
+        inserted_id = None
+
+        if result.returns_rows:
+            row = result.fetchone()
+            if row:
+                mapping = row._mapping
+                if "id" in mapping:
+                    inserted_id = mapping["id"]
+
+        db.commit()
+        return inserted_id
+
     except Exception:
-        pass
+        db.rollback()
+        raise
+
+    finally:
+        db.close()
+
+
+def fetch_one(query: str, params: tuple = ()): 
+    db = SessionLocal()
 
     try:
-        cursor.execute("ALTER TABLE users ADD COLUMN user_role TEXT NOT NULL DEFAULT 'individual'")
-    except Exception:
-        pass
+        final_query, bind_params = _convert_question_marks(query, params)
+        result = db.execute(text(final_query), bind_params)
+        row = result.fetchone()
+
+        if not row:
+            return None
+
+        return dict(row._mapping)
+
+    finally:
+        db.close()
+
+
+def fetch_all(query: str, params: tuple = ()): 
+    db = SessionLocal()
 
     try:
-        cursor.execute("UPDATE users SET plan_code = plan WHERE (plan_code IS NULL OR plan_code = '')")
-    except Exception:
-        pass
+        final_query, bind_params = _convert_question_marks(query, params)
+        result = db.execute(text(final_query), bind_params)
+        return [dict(row._mapping) for row in result.fetchall()]
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        token TEXT NOT NULL UNIQUE,
-        created_at TEXT NOT NULL,
-        expires_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-    """)
+    finally:
+        db.close()
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS cases (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        country TEXT DEFAULT '',
-        case_type TEXT DEFAULT '',
-        opponent_name TEXT DEFAULT '',
-        court_name TEXT DEFAULT '',
-        case_number TEXT DEFAULT '',
-        status TEXT DEFAULT 'مفتوحة',
-        summary TEXT DEFAULT '',
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-    """)
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS analyses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        case_id INTEGER,
-        question TEXT NOT NULL,
-        answer_json TEXT NOT NULL,
-        country TEXT DEFAULT '',
-        case_type TEXT DEFAULT '',
-        plan TEXT DEFAULT 'free',
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (case_id) REFERENCES cases(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS documents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        case_id INTEGER,
-        filename TEXT NOT NULL,
-        document_type TEXT DEFAULT '',
-        analysis_json TEXT DEFAULT '',
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (case_id) REFERENCES cases(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS case_notes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        case_id INTEGER NOT NULL,
-        note TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (case_id) REFERENCES cases(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS case_updates (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        case_id INTEGER NOT NULL,
-        update_text TEXT NOT NULL,
-        hearing_date TEXT DEFAULT '',
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (case_id) REFERENCES cases(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS case_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        case_id INTEGER,
-        user_id INTEGER NOT NULL,
-        question TEXT NOT NULL,
-        answer_json TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (case_id) REFERENCES cases(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS case_documents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        case_id INTEGER,
-        user_id INTEGER NOT NULL,
-        filename TEXT NOT NULL,
-        stored_path TEXT DEFAULT '',
-        content_type TEXT DEFAULT '',
-        analysis_json TEXT DEFAULT '',
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (case_id) REFERENCES cases(id)
-    )
-    """)
-
-    conn.commit()
-    conn.close()
+# =========================
+# User Sessions
+# =========================
 
 
 def create_session(user_id: int) -> str:
     token = secrets.token_urlsafe(32)
-    created_at = now_iso()
-    expires_at = (datetime.utcnow() + timedelta(days=14)).isoformat()
+    created_at = datetime.utcnow()
+    expires_at = datetime.utcnow() + timedelta(days=14)
 
     execute(
         """
@@ -216,22 +198,40 @@ def create_session(user_id: int) -> str:
         (user_id, token, created_at, expires_at),
     )
 
+    try:
+        execute(
+            """
+            INSERT INTO user_sessions (user_id, token, created_at, expires_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (user_id, token, created_at, expires_at),
+        )
+    except Exception:
+        pass
+
     return token
 
 
 def delete_session(token: str):
-    if token:
-        execute(
-            "DELETE FROM sessions WHERE token = ?",
-            (token,),
-        )
+    if not token:
+        return
+
+    try:
+        execute("DELETE FROM sessions WHERE token = ?", (token,))
+    except Exception:
+        pass
+
+    try:
+        execute("DELETE FROM user_sessions WHERE token = ?", (token,))
+    except Exception:
+        pass
 
 
 def get_user_by_session(token: str):
     if not token:
         return None
 
-    return fetch_one(
+    user = fetch_one(
         """
         SELECT users.*
         FROM sessions
@@ -240,60 +240,134 @@ def get_user_by_session(token: str):
         AND sessions.expires_at > ?
         AND users.is_active = 1
         """,
-        (token, now_iso()),
+        (token, datetime.utcnow()),
+    )
+
+    if user:
+        return user
+
+    return fetch_one(
+        """
+        SELECT users.*
+        FROM user_sessions
+        JOIN users ON users.id = user_sessions.user_id
+        WHERE user_sessions.token = ?
+        AND user_sessions.expires_at > ?
+        AND users.is_active = 1
+        """,
+        (token, datetime.utcnow()),
     )
 
 
+# =========================
+# Staff Sessions
+# =========================
+
+
+def create_staff_session(staff_user_id: int) -> str:
+    token = secrets.token_urlsafe(32)
+    created_at = datetime.utcnow()
+    expires_at = datetime.utcnow() + timedelta(hours=8)
+
+    execute(
+        """
+        INSERT INTO staff_sessions (staff_user_id, token, created_at, expires_at)
+        VALUES (?, ?, ?, ?)
+        """,
+        (staff_user_id, token, created_at, expires_at),
+    )
+
+    return token
+
+
+def delete_staff_session(token: str):
+    if token:
+        execute("DELETE FROM staff_sessions WHERE token = ?", (token,))
+
+
+def get_staff_by_session(token: str):
+    if not token:
+        return None
+
+    return fetch_one(
+        """
+        SELECT staff_users.*
+        FROM staff_sessions
+        JOIN staff_users ON staff_users.id = staff_sessions.staff_user_id
+        WHERE staff_sessions.token = ?
+        AND staff_sessions.expires_at > ?
+        AND staff_users.is_active = 1
+        """,
+        (token, datetime.utcnow()),
+    )
+
+
+# =========================
+# Plans / Limits
+# =========================
+
+
 def user_limits(plan: str = "free") -> dict:
-    """
-    الاشتراك يحدد الحدود والصلاحيات. نوع المستخدم لا علاقة له بالحدود.
-    نحاول قراءة الحدود من subscription_plans إن كانت موجودة، وإلا نستخدم defaults.
-    """
-    plan = (plan or "free").strip().lower()
+    plan = plan or "free"
 
-    defaults = {
-        "free": {"monthly_analyses": 3, "monthly_documents": 1, "cases": 1},
-        "basic": {"monthly_analyses": 50, "monthly_documents": 20, "cases": 5},
-        "pro": {"monthly_analyses": 200, "monthly_documents": 100, "cases": 20},
-        "premium": {"monthly_analyses": 500, "monthly_documents": 300, "cases": 100},
-        "enterprise": {"monthly_analyses": 999999, "monthly_documents": 999999, "cases": 999999},
-        "staff_unlimited": {"monthly_analyses": 999999, "monthly_documents": 999999, "cases": 999999},
-    }
+    row = fetch_one(
+        """
+        SELECT *
+        FROM subscription_plans
+        WHERE code = ?
+        AND is_active = 1
+        """,
+        (plan,),
+    )
 
-    try:
+    if not row:
         row = fetch_one(
             """
-            SELECT monthly_analyses, monthly_documents, max_cases
+            SELECT *
             FROM subscription_plans
-            WHERE code = ? AND is_active = 1
-            """,
-            (plan,),
+            WHERE code = 'free'
+            """
         )
 
-        if row:
-            return {
-                "monthly_analyses": int(row["monthly_analyses"] or 0),
-                "monthly_documents": int(row["monthly_documents"] or 0),
-                "cases": int(row["max_cases"] or 0),
-            }
-    except Exception:
-        pass
+    if not row:
+        return {
+            "monthly_analyses": 999999,
+            "monthly_documents": 999999,
+            "cases": 999999,
+            "max_file_size_mb": 15,
+            "can_upload_documents": True,
+            "can_use_case_memory": True,
+            "can_export_pdf": False,
+            "can_export_word": False,
+            "can_access_advanced_analysis": False,
+            "can_use_legal_sources": True,
+        }
 
-    return defaults.get(plan, defaults["free"])
+    return {
+        "monthly_analyses": int(row.get("monthly_analyses") or 0),
+        "monthly_documents": int(row.get("monthly_documents") or 0),
+        "cases": int(row.get("max_cases") or 0),
+        "max_file_size_mb": int(row.get("max_file_size_mb") or 15),
+        "can_upload_documents": bool(row.get("can_upload_documents")),
+        "can_use_case_memory": bool(row.get("can_use_case_memory")),
+        "can_export_pdf": bool(row.get("can_export_pdf")),
+        "can_export_word": bool(row.get("can_export_word")),
+        "can_access_advanced_analysis": bool(row.get("can_access_advanced_analysis")),
+        "can_use_legal_sources": bool(row.get("can_use_legal_sources")),
+    }
+
 
 def user_usage(user_id: int) -> dict:
-    """
-    Returns current usage statistics for the user.
-    """
+    month_key = datetime.utcnow().strftime("%Y-%m")
 
     analyses_row = fetch_one(
         """
         SELECT COUNT(*) AS count
         FROM analyses
         WHERE user_id = ?
-        AND substr(created_at, 1, 7) = substr(?, 1, 7)
+        AND to_char(created_at, 'YYYY-MM') = ?
         """,
-        (user_id, now_iso()),
+        (user_id, month_key),
     )
 
     documents_row = fetch_one(
@@ -301,9 +375,9 @@ def user_usage(user_id: int) -> dict:
         SELECT COUNT(*) AS count
         FROM documents
         WHERE user_id = ?
-        AND substr(created_at, 1, 7) = substr(?, 1, 7)
+        AND to_char(created_at, 'YYYY-MM') = ?
         """,
-        (user_id, now_iso()),
+        (user_id, month_key),
     )
 
     cases_row = fetch_one(
@@ -316,18 +390,14 @@ def user_usage(user_id: int) -> dict:
     )
 
     return {
-        "monthly_analyses": analyses_row["count"] if analyses_row else 0,
-        "monthly_documents": documents_row["count"] if documents_row else 0,
-        "cases": cases_row["count"] if cases_row else 0,
+        "monthly_analyses": int(analyses_row["count"]) if analyses_row else 0,
+        "monthly_documents": int(documents_row["count"]) if documents_row else 0,
+        "cases": int(cases_row["count"]) if cases_row else 0,
     }
 
 
 def can_analyze(user_id: int, plan: str = "free") -> tuple[bool, str]:
     limits = user_limits(plan)
-
-    if limits["monthly_analyses"] >= 999999:
-        return True, ""
-
     usage = user_usage(user_id)
 
     if usage["monthly_analyses"] >= limits["monthly_analyses"]:
@@ -335,23 +405,114 @@ def can_analyze(user_id: int, plan: str = "free") -> tuple[bool, str]:
 
     return True, ""
 
+
 def can_upload_document(user_id: int, plan: str = "free") -> tuple[bool, str]:
     limits = user_limits(plan)
-
-    if limits["monthly_documents"] >= 999999:
-        return True, ""
-
     usage = user_usage(user_id)
 
+    if not limits["can_upload_documents"]:
+        return False, "باقتك الحالية لا تسمح بتحليل المستندات."
+
     if usage["monthly_documents"] >= limits["monthly_documents"]:
-        return False, "لقد وصلت إلى حد المستندات الشهري في باقتك الحالية."
+        return False, "لقد وصلت إلى حد تحليل المستندات الشهري في باقتك الحالية."
 
     return True, ""
+
 
 def can_create_case(user_id: int, plan: str = "free") -> tuple[bool, str]:
-    """
-    Development mode:
-    يسمح بإنشاء جميع القضايا بدون حد.
-    """
+    limits = user_limits(plan)
+    usage = user_usage(user_id)
+
+    if usage["cases"] >= limits["cases"]:
+        return False, "لقد وصلت إلى حد إنشاء القضايا في باقتك الحالية."
 
     return True, ""
+
+
+# =========================
+# Logs
+# =========================
+
+
+def log_internal_action(
+    staff_user_id: Optional[int],
+    action: str,
+    entity_type: str = "",
+    entity_id: str = "",
+    before_json: str = "",
+    after_json: str = "",
+    reason: str = "",
+    ip_address: str = "",
+):
+    execute(
+        """
+        INSERT INTO internal_audit_logs (
+            staff_user_id,
+            action,
+            entity_type,
+            entity_id,
+            before_json,
+            after_json,
+            reason,
+            ip_address,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            staff_user_id,
+            action,
+            entity_type,
+            entity_id,
+            before_json,
+            after_json,
+            reason,
+            ip_address,
+            datetime.utcnow(),
+        ),
+    )
+
+
+def log_ai_request(
+    user_id: Optional[int],
+    case_id: Optional[int],
+    country: str,
+    user_role: str,
+    plan: str,
+    model_used: str,
+    request_type: str,
+    input_size: int,
+    status: str,
+    error_message: str = "",
+):
+    execute(
+        """
+        INSERT INTO ai_request_logs (
+            user_id,
+            case_id,
+            country,
+            user_role,
+            plan,
+            model_used,
+            request_type,
+            input_size,
+            status,
+            error_message,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            user_id,
+            case_id,
+            country,
+            user_role,
+            plan,
+            model_used,
+            request_type,
+            input_size,
+            status,
+            error_message,
+            datetime.utcnow(),
+        ),
+    )

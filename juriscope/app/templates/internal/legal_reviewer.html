@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>مدقق التشريعات | Mizan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: radial-gradient(circle at top right, rgba(212,175,55,.13), transparent 28%), #070b16; min-height: 100vh; }
+    .glass-card { background: rgba(255,255,255,.06); backdrop-filter: blur(18px); box-shadow: 0 24px 80px rgba(0,0,0,.28); }
+    select option { color:#000; }
+    .btn-disabled { opacity: .55; cursor: not-allowed; }
+    input[type="checkbox"] { accent-color: #facc15; }
+  </style>
+</head>
+<body class="text-white">
+  <header class="border-b border-white/10 bg-black/20">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-bold">Mizan Internal</h1>
+        <p class="text-xs text-slate-400 mt-1">مدقق التشريعات — <span class="text-yellow-300">{{ staff.full_name }}</span></p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <a href="/internal/dashboard" class="text-sm text-slate-300 hover:text-yellow-300">لوحة التحكم</a>
+        <a href="/internal/legal-documents" class="text-sm text-slate-300 hover:text-yellow-300">التشريعات</a>
+        <a href="/internal/legal-articles" class="text-sm text-slate-300 hover:text-yellow-300">المواد</a>
+        <a href="/internal/legal-reviewer" class="text-sm text-yellow-300 hover:text-yellow-200">مدقق التشريعات</a>
+        <a href="/internal/logout" class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition">تسجيل الخروج</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-10">
+    <div class="mb-8">
+      <h2 class="text-3xl font-bold mb-3">مدقق التشريعات والمواد</h2>
+      <p class="text-slate-400 leading-relaxed max-w-4xl">
+        يمكن تشغيل التدقيق أو معالجة الأخطاء لتشريع واحد، عدة تشريعات مختارة، أو جميع التشريعات. العمليات تعمل بالخلفية ولا تنقلك من الصفحة.
+      </p>
+    </div>
+
+    <div id="inline-job-message" class="hidden mb-6 rounded-2xl border border-yellow-400/30 bg-yellow-500/10 p-4 text-yellow-100 text-sm"></div>
+
+    {% if error %}
+    <div class="mb-6 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-red-100 text-sm">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="mb-6 rounded-2xl border border-green-400/30 bg-green-500/10 p-4 text-green-100 text-sm">{{ success }}</div>
+    {% endif %}
+
+    <section class="grid lg:grid-cols-3 gap-6">
+      <aside class="glass-card rounded-3xl border border-white/10 p-5 lg:col-span-1">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h3 class="font-bold text-lg">التشريعات</h3>
+          <span class="text-xs rounded-full bg-white/10 px-3 py-1 text-slate-300">{{ documents|length }} تشريع</span>
+        </div>
+
+        <div class="rounded-2xl border border-yellow-400/20 bg-yellow-500/10 p-4 mb-4">
+          <div class="font-semibold text-yellow-100 mb-3">تدقيق جماعي</div>
+          <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+            <button type="button" id="select-all-docs" class="rounded-xl bg-white/10 border border-white/10 px-3 py-2 hover:bg-white/15">تحديد الكل</button>
+            <button type="button" id="clear-selected-docs" class="rounded-xl bg-white/10 border border-white/10 px-3 py-2 hover:bg-white/15">إلغاء التحديد</button>
+          </div>
+          <div class="grid grid-cols-1 gap-2 text-xs">
+            <button type="button" id="check-selected-btn" data-url="/internal/legal-reviewer/check-selected-background" class="rounded-xl bg-blue-500/20 border border-blue-400/30 px-3 py-2 text-blue-100 hover:bg-blue-500/30">تدقيق التشريعات المحددة</button>
+            <button type="button" id="repair-selected-btn" data-url="/internal/legal-reviewer/repair-selected-background" class="rounded-xl bg-amber-500/20 border border-amber-400/30 px-3 py-2 text-amber-100 hover:bg-amber-500/30">معالجة المحدد</button>
+            <button type="button" id="check-all-btn" data-url="/internal/legal-reviewer/check-all-background" class="rounded-xl bg-emerald-500/20 border border-emerald-400/30 px-3 py-2 text-emerald-100 hover:bg-emerald-500/30">تدقيق جميع التشريعات</button>
+            <button type="button" id="repair-all-btn" data-url="/internal/legal-reviewer/repair-all-background" class="rounded-xl bg-red-500/20 border border-red-400/30 px-3 py-2 text-red-100 hover:bg-red-500/30">معالجة جميع التشريعات</button>
+          </div>
+          <div class="mt-3 text-[11px] text-slate-400 leading-relaxed">
+            المعالجة الجماعية قد تستغرق وقتًا. ستظهر الحالة والنتائج لكل تشريع في قسم العمليات أدناه.
+          </div>
+        </div>
+
+        <div class="space-y-2 max-h-[720px] overflow-auto">
+          {% for doc in documents %}
+          <div class="rounded-2xl border {% if selected_document and selected_document.id == doc.id %}border-yellow-400/50 bg-yellow-500/10{% else %}border-white/10 bg-white/5 hover:bg-white/10{% endif %} p-4 transition">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="doc-checkbox mt-1" value="{{ doc.id }}">
+              <a href="/internal/legal-reviewer/{{ doc.id }}" class="block flex-1">
+                <div class="font-semibold text-sm leading-relaxed">{{ doc.title_ar }}</div>
+                <div class="mt-2 text-xs text-slate-400">
+                  المواد: {{ counts.get(doc.id, 0) }} — الحالة: {{ doc.review_status }} — {{ doc.status }}
+                </div>
+              </a>
+            </div>
+          </div>
+          {% else %}
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">لا توجد تشريعات بعد.</div>
+          {% endfor %}
+        </div>
+      </aside>
+
+      <div class="lg:col-span-2 space-y-6">
+        {% if selected_document %}
+        <section class="glass-card rounded-3xl border border-white/10 p-6">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h3 class="text-2xl font-bold">{{ selected_document.title_ar }}</h3>
+              <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+                المصدر: {{ selected_document.source_name or "غير محدد" }} — عدد المواد: {{ counts.get(selected_document.id, 0) }} — حالة المراجعة: {{ selected_document.review_status }}
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="start-check-btn" data-url="/internal/legal-reviewer/{{ selected_document.id }}/check-background" class="rounded-xl bg-blue-500/20 border border-blue-400/30 px-4 py-3 text-sm text-blue-100 hover:bg-blue-500/30 transition">
+                تشغيل التدقيق بالخلفية
+              </button>
+              <button id="start-repair-btn" data-url="/internal/legal-reviewer/{{ selected_document.id }}/repair-background" class="rounded-xl bg-amber-500/20 border border-amber-400/30 px-4 py-3 text-sm text-amber-100 hover:bg-amber-500/30 transition">
+                معالجة الأخطاء بالخلفية
+              </button>
+              <a href="/internal/legal-reviewer/{{ selected_document.id }}" class="rounded-xl bg-white/10 border border-white/10 px-4 py-3 text-sm text-slate-200 hover:bg-white/15 transition">
+                تحديث النتيجة
+              </a>
+            </div>
+          </div>
+        </section>
+        {% else %}
+        <section class="glass-card rounded-3xl border border-white/10 p-8 text-center text-slate-300">
+          اختر تشريعًا من القائمة لعرض تقريره، أو استخدم التدقيق الجماعي من القائمة الجانبية.
+        </section>
+        {% endif %}
+
+        {% if reviewer_jobs %}
+        <section class="glass-card rounded-3xl border border-white/10 p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 class="text-xl font-bold">شاشة حالة عمليات المدقق</h3>
+            <a href="{% if selected_document %}/internal/legal-reviewer/{{ selected_document.id }}{% else %}/internal/legal-reviewer{% endif %}" class="rounded-xl bg-white/10 border border-white/10 px-4 py-2 text-xs text-slate-200 hover:bg-white/15">تحديث الحالة</a>
+          </div>
+
+          <div class="space-y-4">
+            {% for job in reviewer_jobs[:15] %}
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div class="flex flex-wrap justify-between gap-3">
+                <div>
+                  <div class="font-semibold">
+                    {% if job.type == "quality_check" %}تدقيق تشريع{% elif job.type == "quality_repair" %}معالجة أخطاء تشريع{% elif job.type == "quality_check_batch" %}تدقيق جماعي{% elif job.type == "quality_repair_batch" %}معالجة جماعية{% else %}عملية مدقق{% endif %}
+                  </div>
+                  <div class="text-xs text-slate-400 mt-1">
+                    {{ job.document_title or job.filename }} — بدأت: {{ job.created_at }} — آخر تحديث: {{ job.updated_at }}
+                  </div>
+                </div>
+                <div class="text-sm {% if job.status == 'failed' or job.status == 'completed_with_errors' %}text-red-300{% elif job.status in ['completed','completed_with_warnings','completed_with_unresolved_issues'] %}text-green-300{% else %}text-yellow-300{% endif %}">
+                  {{ job.status }}
+                </div>
+              </div>
+
+              {% if job.total_count %}
+              <div class="mt-3 text-xs text-slate-300">
+                التقدم: {{ job.processed_count }} / {{ job.total_count }}
+              </div>
+              <div class="mt-2 h-2 rounded-full bg-black/30 overflow-hidden">
+                {% set pct = (job.processed_count * 100 / job.total_count) if job.total_count else 0 %}
+                <div class="h-full bg-yellow-400" style="width: {{ pct }}%"></div>
+              </div>
+              {% endif %}
+
+              {% if job.current_step %}
+              <div class="mt-3 rounded-xl bg-black/20 border border-white/10 p-3 text-xs text-yellow-100">
+                الآن: {{ job.current_step }}
+              </div>
+              {% endif %}
+
+              {% if job.progress %}
+              <details class="mt-3 rounded-xl border border-white/10 bg-black/10 p-3">
+                <summary class="cursor-pointer text-xs text-slate-200">عرض سجل العملية</summary>
+                <ul class="mt-3 space-y-1 text-xs text-slate-300 max-h-48 overflow-auto">
+                  {% for step in job.progress[-20:] %}
+                  <li>• {{ step.message }} <span class="text-slate-500">{{ step.time }}</span></li>
+                  {% endfor %}
+                </ul>
+              </details>
+              {% endif %}
+
+              {% if job.error_message %}
+              <div class="mt-3 text-xs text-red-200">{{ job.error_message }}</div>
+              {% endif %}
+
+              {% if job.per_document_results %}
+              <div class="mt-4">
+                <div class="font-semibold text-sm mb-2">نتيجة كل تشريع</div>
+                <div class="space-y-2 max-h-96 overflow-auto">
+                  {% for result in job.per_document_results %}
+                  <div class="rounded-xl border {% if result.status == 'failed' %}border-red-400/30 bg-red-500/10{% elif result.critical_count or result.warning_count or result.status == 'repaired_with_unresolved_issues' or result.status == 'needs_review' %}border-yellow-400/30 bg-yellow-500/10{% else %}border-green-400/30 bg-green-500/10{% endif %} p-3 text-xs">
+                    <div class="flex flex-wrap justify-between gap-2">
+                      <a href="/internal/legal-reviewer/{{ result.document_id }}" class="font-semibold hover:text-yellow-200">{{ result.title }}</a>
+                      <span>{{ result.status }}</span>
+                    </div>
+                    <div class="mt-1 text-slate-300">
+                      المواد: {{ result.articles_count or 0 }} — أخطاء حرجة: {{ result.critical_count or 0 }} — تحذيرات: {{ result.warning_count or 0 }}
+                    </div>
+                    {% if result.message %}<div class="mt-1 text-red-200">{{ result.message }}</div>{% endif %}
+
+                    {% if result.critical_errors or result.warnings or result.info_items or result.repair_plan or result.missing_numbers %}
+                    <details class="mt-3 rounded-xl border border-white/10 bg-black/15 p-3" open>
+                      <summary class="cursor-pointer text-yellow-100 font-semibold">
+                        التقرير التفصيلي لهذا التشريع
+                      </summary>
+
+                      {% if result.missing_numbers %}
+                      <div class="mt-3 rounded-xl border border-red-400/25 bg-red-500/10 p-3">
+                        <div class="font-semibold text-red-100 mb-2">
+                          مواد ناقصة محتملة
+                          {% if result.missing_numbers_total %}({{ result.missing_numbers_total }}){% endif %}
+                        </div>
+                        <div class="text-red-100 leading-relaxed">
+                          {% for n in result.missing_numbers[:80] %}
+                            <span class="inline-block rounded-lg bg-red-500/15 border border-red-400/20 px-2 py-1 mb-1">المادة {{ n }}</span>
+                          {% endfor %}
+                          {% if result.missing_numbers_total and result.missing_numbers_total > 80 %}
+                            <span class="text-red-200">... ويوجد المزيد</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                      {% endif %}
+
+                      {% if result.critical_errors %}
+                      <div class="mt-3">
+                        <div class="font-semibold text-red-200 mb-2">
+                          الأخطاء الحرجة
+                          {% if result.critical_errors_total %}({{ result.critical_errors_total }}){% endif %}
+                        </div>
+                        <div class="space-y-2">
+                          {% for item in result.critical_errors %}
+                          <div class="rounded-xl border border-red-400/20 bg-red-500/10 p-3">
+                            <div class="text-red-100 leading-relaxed">
+                              {% if item.article_number %}<span class="font-bold">المادة {{ item.article_number }}:</span>{% endif %}
+                              {{ item.message }}
+                            </div>
+                            {% if item.repair_action %}
+                            <div class="mt-1 text-red-100/80">
+                              الإجراء المقترح: {{ item.repair_action }}
+                            </div>
+                            {% endif %}
+                          </div>
+                          {% endfor %}
+                          {% if result.has_more_critical %}
+                          <div class="text-red-200">تم عرض أول 80 خطأ حرِج فقط. افتح صفحة التشريع أو التقرير الكامل لمراجعة الباقي.</div>
+                          {% endif %}
+                        </div>
+                      </div>
+                      {% endif %}
+
+                      {% if result.warnings %}
+                      <div class="mt-3">
+                        <div class="font-semibold text-yellow-200 mb-2">
+                          التحذيرات
+                          {% if result.warnings_total %}({{ result.warnings_total }}){% endif %}
+                        </div>
+                        <div class="space-y-2">
+                          {% for item in result.warnings %}
+                          <div class="rounded-xl border border-yellow-400/20 bg-yellow-500/10 p-3">
+                            <div class="text-yellow-100 leading-relaxed">
+                              {% if item.article_number %}<span class="font-bold">المادة {{ item.article_number }}:</span>{% endif %}
+                              {{ item.message }}
+                            </div>
+                            {% if item.repair_action %}
+                            <div class="mt-1 text-yellow-100/80">
+                              الإجراء المقترح: {{ item.repair_action }}
+                            </div>
+                            {% endif %}
+                          </div>
+                          {% endfor %}
+                          {% if result.has_more_warnings %}
+                          <div class="text-yellow-200">تم عرض أول 80 تحذير فقط. افتح صفحة التشريع أو التقرير الكامل لمراجعة الباقي.</div>
+                          {% endif %}
+                        </div>
+                      </div>
+                      {% endif %}
+
+                      {% if result.info_items %}
+                      <details class="mt-3 rounded-xl border border-blue-400/20 bg-blue-500/10 p-3">
+                        <summary class="cursor-pointer text-blue-100 font-semibold">
+                          ملاحظات معلوماتية
+                          {% if result.info_total %}({{ result.info_total }}){% endif %}
+                        </summary>
+                        <div class="mt-2 space-y-2">
+                          {% for item in result.info_items %}
+                          <div class="rounded-xl border border-blue-400/20 bg-blue-500/10 p-3 text-blue-100">
+                            {% if item.article_number %}<span class="font-bold">المادة {{ item.article_number }}:</span>{% endif %}
+                            {{ item.message }}
+                          </div>
+                          {% endfor %}
+                        </div>
+                      </details>
+                      {% endif %}
+
+                      {% if result.repair_plan %}
+                      <div class="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+                        <div class="font-semibold text-emerald-100 mb-2">خطة المعالجة المقترحة</div>
+                        <ul class="space-y-1 text-emerald-100">
+                          {% for item in result.repair_plan %}
+                          <li>• {{ item }}</li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                      {% endif %}
+                    </details>
+                    {% endif %}
+
+                    {% if result.unresolved_items %}
+                    <details class="mt-2 rounded-xl border border-yellow-400/20 bg-yellow-500/10 p-3">
+                      <summary class="cursor-pointer text-yellow-100">أخطاء/تحذيرات غير محلولة بعد المعالجة</summary>
+                      <ul class="mt-2 space-y-1 text-slate-200">
+                        {% for item in result.unresolved_items[:80] %}
+                        <li>• {% if item.article_number %}المادة {{ item.article_number }}: {% endif %}{{ item.message }}</li>
+                        {% endfor %}
+                      </ul>
+                    </details>
+                    {% endif %}
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              {% if job.repair_result and job.repair_result.actions %}
+              <div class="mt-3 text-xs text-slate-200">
+                <div class="font-semibold mb-1">ما تم تنفيذه:</div>
+                <ul class="space-y-1">
+                  {% for action in job.repair_result.actions[:10] %}
+                  <li>• {{ action }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+
+        {% if report %}
+        <section class="grid md:grid-cols-4 gap-4">
+          <div class="glass-card rounded-2xl border border-white/10 p-5">
+            <div class="text-xs text-slate-400">حالة التقرير</div>
+            <div class="text-xl font-bold mt-2">{{ report.summary.status }}</div>
+          </div>
+          <div class="glass-card rounded-2xl border border-red-400/20 p-5">
+            <div class="text-xs text-slate-400">أخطاء حرجة</div>
+            <div class="text-2xl font-bold text-red-300 mt-2">{{ report.summary.critical_count }}</div>
+          </div>
+          <div class="glass-card rounded-2xl border border-yellow-400/20 p-5">
+            <div class="text-xs text-slate-400">تحذيرات</div>
+            <div class="text-2xl font-bold text-yellow-300 mt-2">{{ report.summary.warning_count }}</div>
+          </div>
+          <div class="glass-card rounded-2xl border border-green-400/20 p-5">
+            <div class="text-xs text-slate-400">عدد المواد</div>
+            <div class="text-2xl font-bold text-green-300 mt-2">{{ report.summary.articles_count }}</div>
+          </div>
+        </section>
+
+        <section class="glass-card rounded-3xl border border-white/10 p-6">
+          <h3 class="text-xl font-bold mb-4">خطة المعالجة</h3>
+          {% if report.repair_plan %}
+          <ul class="space-y-2 text-sm text-slate-200">
+            {% for item in report.repair_plan %}
+            <li class="rounded-xl bg-white/5 border border-white/10 p-3">• {{ item }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div class="rounded-2xl border border-green-400/30 bg-green-500/10 p-5 text-green-100">لا توجد خطة معالجة مطلوبة حاليًا.</div>
+          {% endif %}
+        </section>
+
+        <section class="glass-card rounded-3xl border border-white/10 p-6">
+          <h3 class="text-xl font-bold mb-5">الأخطاء والملاحظات</h3>
+          <div class="space-y-3 max-h-[620px] overflow-auto">
+            {% for issue in report.issues %}
+            <div class="rounded-2xl border {% if issue.level == 'critical' %}border-red-400/30 bg-red-500/10{% elif issue.level == 'warning' %}border-yellow-400/30 bg-yellow-500/10{% else %}border-blue-400/30 bg-blue-500/10{% endif %} p-4">
+              <div class="flex flex-wrap items-center gap-2 text-xs mb-2">
+                <span class="rounded-full bg-black/20 px-2 py-1">{{ issue.level }}</span>
+                <span class="rounded-full bg-black/20 px-2 py-1">{{ issue.scope }}</span>
+                {% if issue.article_number %}<span class="rounded-full bg-black/20 px-2 py-1">المادة {{ issue.article_number }}</span>{% endif %}
+              </div>
+              <div class="text-sm leading-relaxed">{{ issue.message }}</div>
+              {% if issue.repair_action %}<div class="text-xs text-slate-300 mt-2">العلاج: {{ issue.repair_action }}</div>{% endif %}
+            </div>
+            {% else %}
+            <div class="rounded-2xl border border-green-400/30 bg-green-500/10 p-5 text-green-100">لم يرصد المدقق مشاكل واضحة.</div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="glass-card rounded-3xl border border-white/10 p-6">
+          <h3 class="text-xl font-bold mb-5">تقرير المواد</h3>
+          <div class="space-y-3 max-h-[620px] overflow-auto">
+            {% for article in report.article_reports %}
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="font-bold text-yellow-100">المادة {{ article.article_number }}</div>
+                <div class="text-xs text-slate-400">طول النص: {{ article.text_length }}</div>
+              </div>
+              {% if article.issues %}
+              <ul class="mt-3 space-y-1 text-xs text-slate-200">
+                {% for issue in article.issues %}<li>• {{ issue.message }}</li>{% endfor %}
+              </ul>
+              {% else %}
+              <div class="mt-3 text-xs text-green-200">لا توجد ملاحظات على هذه المادة.</div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% elif selected_document %}
+        <section class="glass-card rounded-3xl border border-white/10 p-8 text-center text-slate-300">
+          لا يوجد تقرير جاهز لهذا التشريع بعد. اضغط "تشغيل التدقيق بالخلفية"، ثم حدّث الصفحة لاحقًا.
+        </section>
+        {% endif %}
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function showInlineMessage(message, isError) {
+      const box = document.getElementById("inline-job-message");
+      if (!box) return;
+      box.classList.remove("hidden");
+      box.textContent = message;
+      if (isError) {
+        box.className = "mb-6 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-red-100 text-sm";
+      } else {
+        box.className = "mb-6 rounded-2xl border border-yellow-400/30 bg-yellow-500/10 p-4 text-yellow-100 text-sm";
+      }
+    }
+
+    function selectedDocumentIds() {
+      return Array.from(document.querySelectorAll(".doc-checkbox:checked")).map((checkbox) => checkbox.value);
+    }
+
+    async function postBackgroundJob(url, documentIds) {
+      const formData = new FormData();
+      if (Array.isArray(documentIds)) {
+        documentIds.forEach((id) => formData.append("document_ids", id));
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "X-Requested-With": "fetch" },
+        body: formData
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "تعذر بدء العملية.");
+      }
+      return data;
+    }
+
+    async function startButtonJob(button, documentIds) {
+      if (!button) return;
+      const url = button.dataset.url;
+      button.disabled = true;
+      button.classList.add("btn-disabled");
+      const originalText = button.textContent;
+      button.textContent = "جاري بدء العملية...";
+
+      try {
+        const data = await postBackgroundJob(url, documentIds);
+        showInlineMessage(data.message || "تم بدء العملية بالخلفية.", false);
+      } catch (error) {
+        showInlineMessage(error.message || "حدث خطأ أثناء بدء العملية.", true);
+      } finally {
+        button.disabled = false;
+        button.classList.remove("btn-disabled");
+        button.textContent = originalText;
+      }
+    }
+
+    const selectAllBtn = document.getElementById("select-all-docs");
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener("click", function () {
+        document.querySelectorAll(".doc-checkbox").forEach((checkbox) => checkbox.checked = true);
+      });
+    }
+
+    const clearSelectedBtn = document.getElementById("clear-selected-docs");
+    if (clearSelectedBtn) {
+      clearSelectedBtn.addEventListener("click", function () {
+        document.querySelectorAll(".doc-checkbox").forEach((checkbox) => checkbox.checked = false);
+      });
+    }
+
+    const checkSelectedBtn = document.getElementById("check-selected-btn");
+    if (checkSelectedBtn) {
+      checkSelectedBtn.addEventListener("click", function () {
+        const ids = selectedDocumentIds();
+        if (!ids.length) {
+          showInlineMessage("اختر تشريعًا واحدًا على الأقل.", true);
+          return;
+        }
+        startButtonJob(checkSelectedBtn, ids);
+      });
+    }
+
+    const repairSelectedBtn = document.getElementById("repair-selected-btn");
+    if (repairSelectedBtn) {
+      repairSelectedBtn.addEventListener("click", function () {
+        const ids = selectedDocumentIds();
+        if (!ids.length) {
+          showInlineMessage("اختر تشريعًا واحدًا على الأقل.", true);
+          return;
+        }
+        if (confirm("سيبدأ المدقق بمعالجة أخطاء التشريعات المحددة بالخلفية. متابعة؟")) {
+          startButtonJob(repairSelectedBtn, ids);
+        }
+      });
+    }
+
+    const checkAllBtn = document.getElementById("check-all-btn");
+    if (checkAllBtn) {
+      checkAllBtn.addEventListener("click", function () {
+        if (confirm("سيبدأ تدقيق جميع التشريعات بالخلفية. متابعة؟")) {
+          startButtonJob(checkAllBtn, []);
+        }
+      });
+    }
+
+    const repairAllBtn = document.getElementById("repair-all-btn");
+    if (repairAllBtn) {
+      repairAllBtn.addEventListener("click", function () {
+        if (confirm("سيبدأ المدقق بمعالجة أخطاء جميع التشريعات بالخلفية. هذه عملية كبيرة وقد تستغرق وقتًا. متابعة؟")) {
+          startButtonJob(repairAllBtn, []);
+        }
+      });
+    }
+
+    const checkBtn = document.getElementById("start-check-btn");
+    if (checkBtn) {
+      checkBtn.addEventListener("click", function () {
+        startButtonJob(checkBtn, []);
+      });
+    }
+
+    const repairBtn = document.getElementById("start-repair-btn");
+    if (repairBtn) {
+      repairBtn.addEventListener("click", function (event) {
+        event.preventDefault();
+        if (confirm("سيبدأ المدقق بمعالجة الأخطاء بالخلفية. لن يتم اعتماد التشريع تلقائيًا. متابعة؟")) {
+          startButtonJob(repairBtn, []);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

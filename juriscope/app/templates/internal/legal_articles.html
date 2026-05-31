@@ -2,428 +2,158 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>إدارة المواد القانونية | Mizan</title>
+  <title>{% if is_archived_page %}المواد المؤرشفة والمرفوضة{% else %}إدارة المواد القانونية{% endif %} | Mizan</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <script src="https://cdn.tailwindcss.com"></script>
-
   <style>
-    body {
-      background:
-        radial-gradient(circle at top right, rgba(212, 175, 55, 0.13), transparent 28%),
-        radial-gradient(circle at bottom left, rgba(80, 70, 180, 0.12), transparent 30%),
-        #070b16;
-      min-height: 100vh;
-    }
-
-    .glass-card {
-      background: rgba(255, 255, 255, 0.06);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
-    }
-
-    select option {
-      color: #000;
-    }
-
-    textarea {
-      min-height: 180px;
-    }
+    body { background: radial-gradient(circle at top right, rgba(212,175,55,.13), transparent 28%), #070b16; min-height: 100vh; }
+    .glass-card { background: rgba(255,255,255,.06); backdrop-filter: blur(18px); box-shadow: 0 24px 80px rgba(0,0,0,.28); }
+    select option { color:#000; }
+    textarea { min-height: 160px; }
   </style>
 </head>
-
 <body class="text-white">
-
   <header class="border-b border-white/10 bg-black/20">
     <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-
       <div>
         <h1 class="text-xl font-bold">Mizan Internal</h1>
-        <p class="text-xs text-slate-400 mt-1">
-          إدارة المواد القانونية —
-          <span class="text-yellow-300">{{ staff.full_name }}</span>
-        </p>
+        <p class="text-xs text-slate-400 mt-1">إدارة المواد القانونية — <span class="text-yellow-300">{{ staff.full_name }}</span></p>
       </div>
-
-      <div class="flex items-center gap-3">
-        <a href="/internal/dashboard" class="text-sm text-slate-300 hover:text-yellow-300">
-          لوحة التحكم
-        </a>
-
-        <a href="/internal/legal-documents" class="text-sm text-slate-300 hover:text-yellow-300">
-          التشريعات
-        </a>
-
-        <a href="/logout" class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition">
-          تسجيل الخروج
-        </a>
+      <div class="flex flex-wrap items-center gap-3">
+        <a href="/internal/dashboard" class="text-sm text-slate-300 hover:text-yellow-300">لوحة التحكم</a>
+        <a href="/internal/legal-documents" class="text-sm text-slate-300 hover:text-yellow-300">التشريعات</a>
+        <a href="/internal/legal-articles" class="text-sm {% if not is_archived_page %}text-yellow-300{% else %}text-slate-300{% endif %} hover:text-yellow-300">المواد النشطة</a>
+        <a href="/internal/legal-articles/archived" class="text-sm {% if is_archived_page %}text-yellow-300{% else %}text-slate-300{% endif %} hover:text-yellow-300">المؤرشفة / المرفوضة</a>
+        <a href="/internal/logout" class="rounded-xl bg-red-500/15 border border-red-400/30 px-4 py-2 text-sm text-red-200 hover:bg-red-500/25 transition">تسجيل الخروج</a>
       </div>
-
     </div>
   </header>
 
   <main class="max-w-7xl mx-auto px-4 py-10">
-
-    <div class="mb-8">
-      <h2 class="text-3xl font-bold mb-3">
-        إدارة المواد القانونية
-      </h2>
-
-      <p class="text-slate-400 leading-relaxed max-w-3xl">
-        هنا يتم إدخال نصوص المواد القانونية وربطها بالتشريع الصحيح. المساعد القانوني سيعتمد لاحقًا على المواد المعتمدة فقط.
-      </p>
+    <div class="mb-8 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+      <div>
+        <h2 class="text-3xl font-bold mb-3">{% if is_archived_page %}المواد المؤرشفة والمرفوضة{% else %}إدارة المواد القانونية{% endif %}</h2>
+        <p class="text-slate-400 leading-relaxed max-w-3xl">
+          أي مادة جديدة أو معدلة تدخل تلقائيًا في حالة <span class="text-yellow-300">بانتظار المراجعة</span>. لا تظهر للمساعد القانوني إلا بعد اعتمادها.
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/internal/legal-articles" class="rounded-xl border border-white/10 px-4 py-2 text-sm hover:border-yellow-400/50 {% if not is_archived_page %}bg-yellow-400 text-slate-950 font-bold{% else %}bg-white/5 text-slate-200{% endif %}">النشطة</a>
+        <a href="/internal/legal-articles/archived" class="rounded-xl border border-white/10 px-4 py-2 text-sm hover:border-yellow-400/50 {% if is_archived_page %}bg-yellow-400 text-slate-950 font-bold{% else %}bg-white/5 text-slate-200{% endif %}">المؤرشفة/المرفوضة</a>
+      </div>
     </div>
 
     {% if error %}
     <div class="mb-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200 text-sm">
-      {% if error == "missing_article_number" %}
-        يرجى إدخال رقم المادة.
-      {% elif error == "missing_article_text" %}
-        يرجى إدخال نص المادة.
-      {% elif error == "invalid_status" %}
-        حالة المادة غير صحيحة.
-      {% elif error == "invalid_review_status" %}
-        حالة المراجعة غير صحيحة.
-      {% elif error == "document_not_found" %}
-        التشريع غير موجود.
-      {% elif error == "article_not_found" %}
-        المادة غير موجودة.
-      {% else %}
-        حدث خطأ أثناء تنفيذ العملية.
-      {% endif %}
+      {% if error == "missing_article_number" %}يرجى إدخال رقم المادة.
+      {% elif error == "missing_article_text" %}يرجى إدخال نص المادة.
+      {% elif error == "invalid_status" %}حالة المادة غير صحيحة.
+      {% elif error == "invalid_review_status" %}حالة المراجعة غير صحيحة.
+      {% elif error == "document_not_found" %}التشريع غير موجود.
+      {% elif error == "article_not_found" %}المادة غير موجودة.
+      {% elif error == "delete_failed" %}تعذر حذف المادة.
+      {% else %}حدث خطأ أثناء تنفيذ العملية.{% endif %}
     </div>
     {% endif %}
 
     {% if success %}
     <div class="mb-6 rounded-xl border border-green-400/30 bg-green-500/10 p-4 text-green-200 text-sm">
-      {% if success == "created" %}
-        تم إنشاء المادة القانونية بنجاح.
-      {% elif success == "status_updated" %}
-        تم تحديث حالة المادة بنجاح.
-      {% else %}
-        تمت العملية بنجاح.
-      {% endif %}
+      {% if success == "created" %}تم إنشاء المادة بنجاح وهي الآن بانتظار المراجعة.
+      {% elif success == "status_updated" %}تم تحديث حالة المادة بنجاح.
+      {% elif success == "updated_pending_review" %}تم تعديل المادة وإرجاعها إلى بانتظار المراجعة.
+      {% elif success == "deleted" %}تم حذف المادة القانونية وجميع بياناتها المرتبطة.
+      {% else %}تمت العملية بنجاح.{% endif %}
     </div>
     {% endif %}
 
-    <section class="grid lg:grid-cols-3 gap-6">
+    {% if not is_archived_page %}
+    <section class="glass-card rounded-3xl border border-white/10 p-6 mb-10">
+      <h3 class="text-xl font-bold mb-5">إضافة مادة قانونية يدويًا</h3>
+      <form method="post" action="/internal/legal-articles/create" class="grid lg:grid-cols-2 gap-4">
+        <div class="lg:col-span-2">
+          <label class="block text-sm text-slate-300 mb-2">التشريع</label>
+          <select name="document_id" required class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400">
+            {% for doc in documents %}<option value="{{ doc.id }}" {% if selected_document and selected_document.id == doc.id %}selected{% endif %}>{{ doc.title_ar }}</option>{% endfor %}
+          </select>
+          {% if documents|length == 0 %}<p class="text-xs text-red-300 mt-2">يجب إضافة تشريع نشط أولًا.</p>{% endif %}
+        </div>
+        <input name="article_number" required placeholder="رقم المادة" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+        <input name="article_title" placeholder="عنوان المادة - اختياري" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+        <input name="chapter" placeholder="الباب - اختياري" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+        <input name="section" placeholder="الفصل - اختياري" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+        <input name="effective_date" placeholder="تاريخ النفاذ" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+        <input name="repealed_date" placeholder="تاريخ الإلغاء - اختياري" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+        <select name="source_confidence" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">{% for key,label in source_confidence.items() %}<option value="{{ key }}" {% if key == 'official' %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        <input name="notes" placeholder="ملاحظات - اختياري" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+        <textarea name="article_text" required placeholder="نص المادة القانونية كما ورد في المصدر الرسمي..." class="lg:col-span-2 rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"></textarea>
+        <p class="lg:col-span-2 text-xs text-yellow-200 bg-yellow-500/10 border border-yellow-400/20 rounded-xl p-3">سيتم حفظ المادة تلقائيًا كـ بانتظار المراجعة. لن تظهر للمساعد قبل الاعتماد.</p>
+        <button class="lg:col-span-2 rounded-xl bg-yellow-400 text-slate-950 font-bold py-3 hover:bg-yellow-300">حفظ بانتظار المراجعة</button>
+      </form>
+    </section>
+    {% endif %}
 
-      <div class="glass-card rounded-3xl border border-white/10 p-6 lg:col-span-1">
-        <h3 class="text-xl font-bold mb-5">إضافة مادة قانونية</h3>
-
-        <form method="post" action="/internal/legal-articles/create" class="space-y-5">
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">التشريع</label>
-            <select
-              name="document_id"
-              required
-              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-            >
-              {% for doc in documents %}
-              <option value="{{ doc.id }}" {% if selected_document and selected_document.id == doc.id %}selected{% endif %}>
-                {{ doc.title_ar }}
-              </option>
-              {% endfor %}
-            </select>
-
-            {% if documents|length == 0 %}
-            <p class="text-xs text-red-300 mt-2">
-              يجب إضافة تشريع أولًا قبل إدخال المواد.
-            </p>
-            {% endif %}
-          </div>
-
-          {% if selected_document %}
-          <div class="rounded-xl bg-yellow-500/10 border border-yellow-400/20 p-4 text-xs text-yellow-100 leading-relaxed">
-            التشريع المحدد:
-            <strong>{{ selected_document.title_ar }}</strong>
-          </div>
-          {% endif %}
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">رقم المادة</label>
-            <input
-              type="text"
-              name="article_number"
-              required
-              placeholder="مثال: 256"
-              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-            >
-          </div>
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">عنوان المادة</label>
-            <input
-              type="text"
-              name="article_title"
-              placeholder="اختياري"
-              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-            >
-          </div>
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">نص المادة</label>
-            <textarea
-              name="article_text"
-              required
-              placeholder="اكتب نص المادة القانونية كما ورد في المصدر الرسمي..."
-              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-            ></textarea>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm text-slate-300 mb-2">الباب</label>
-              <input
-                type="text"
-                name="chapter"
-                placeholder="اختياري"
-                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-              >
-            </div>
-
-            <div>
-              <label class="block text-sm text-slate-300 mb-2">الفصل</label>
-              <input
-                type="text"
-                name="section"
-                placeholder="اختياري"
-                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-              >
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm text-slate-300 mb-2">تاريخ النفاذ</label>
-              <input
-                type="text"
-                name="effective_date"
-                placeholder="YYYY-MM-DD"
-                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-              >
-            </div>
-
-            <div>
-              <label class="block text-sm text-slate-300 mb-2">تاريخ الإلغاء</label>
-              <input
-                type="text"
-                name="repealed_date"
-                placeholder="اختياري"
-                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-              >
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm text-slate-300 mb-2">حالة المادة</label>
-              <select
-                name="status"
-                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-              >
-                {% for key, label in article_statuses.items() %}
-                <option value="{{ key }}">{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-sm text-slate-300 mb-2">حالة المراجعة</label>
-              <select
-                name="review_status"
-                class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-              >
-                {% for key, label in review_statuses.items() %}
-                <option value="{{ key }}">{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">ثقة المصدر</label>
-            <select
-              name="source_confidence"
-              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-            >
-              {% for key, label in source_confidence.items() %}
-              <option value="{{ key }}" {% if key == "medium" %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">ملاحظات</label>
-            <textarea
-              name="notes"
-              placeholder="ملاحظات داخلية حول المادة..."
-              class="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:border-yellow-400"
-            ></textarea>
-          </div>
-
-          <button
-            type="submit"
-            class="w-full rounded-xl bg-yellow-500 px-6 py-3 text-slate-950 font-bold hover:bg-yellow-400 transition"
-            {% if documents|length == 0 %}disabled{% endif %}
-          >
-            إضافة المادة
-          </button>
+    <section class="glass-card rounded-3xl border border-white/10 p-6">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
+        <h3 class="text-xl font-bold">{% if is_archived_page %}المواد المؤرشفة والمرفوضة{% else %}المواد بانتظار المراجعة أو المعتمدة{% endif %}</h3>
+        <form method="get" action="{% if is_archived_page %}/internal/legal-articles/archived{% else %}/internal/legal-articles{% endif %}" class="flex gap-2">
+          <select name="document_id" class="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-white text-sm">
+            <option value="">كل التشريعات</option>
+            {% for doc in documents %}<option value="{{ doc.id }}" {% if selected_document and selected_document.id == doc.id %}selected{% endif %}>{{ doc.title_ar }}</option>{% endfor %}
+          </select>
+          <button class="rounded-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/15">فلترة</button>
         </form>
       </div>
 
-      <div class="glass-card rounded-3xl border border-white/10 p-6 lg:col-span-2">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
-          <h3 class="text-xl font-bold">قائمة المواد القانونية</h3>
+      <div class="space-y-4">
+        {% for article in articles %}
+        {% set doc = document_map.get(article.document_id) %}
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div class="flex-1">
+              <h4 class="text-lg font-bold text-yellow-200">المادة {{ article.article_number }} {% if article.article_title %}— {{ article.article_title }}{% endif %}</h4>
+              <p class="text-sm text-slate-400 mt-1">{{ doc.title_ar if doc else 'تشريع غير معروف' }}</p>
+              <div class="flex flex-wrap gap-2 mt-3 text-xs">
+                <span class="rounded-full bg-blue-500/15 text-blue-200 px-3 py-1">{{ article_statuses.get(article.status, article.status) }}</span>
+                <span class="rounded-full bg-yellow-500/15 text-yellow-200 px-3 py-1">{{ review_statuses.get(article.review_status, article.review_status) }}</span>
+                <span class="rounded-full bg-green-500/15 text-green-200 px-3 py-1">{{ source_confidence.get(article.source_confidence, article.source_confidence) }}</span>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              {% if article.review_status != 'approved' or article.status != 'active' %}<form method="post" action="/internal/legal-articles/approve"><input type="hidden" name="article_id" value="{{ article.id }}"><button class="rounded-lg bg-green-500/20 border border-green-400/30 px-3 py-2 text-xs text-green-100" onclick="return confirm('اعتماد هذه المادة وجعلها ظاهرة للمساعد؟')">اعتماد</button></form>{% endif %}
+              {% if not is_archived_page %}<form method="post" action="/internal/legal-articles/reject"><input type="hidden" name="article_id" value="{{ article.id }}"><button class="rounded-lg bg-orange-500/20 border border-orange-400/30 px-3 py-2 text-xs text-orange-100" onclick="return confirm('رفض هذه المادة؟ لن تظهر للمساعد.')">رفض</button></form>{% endif %}
+              {% if not is_archived_page %}<form method="post" action="/internal/legal-articles/archive"><input type="hidden" name="article_id" value="{{ article.id }}"><button class="rounded-lg bg-slate-500/20 border border-slate-400/30 px-3 py-2 text-xs text-slate-100" onclick="return confirm('أرشفة هذه المادة؟ لن تظهر للمساعد.')">أرشفة</button></form>{% endif %}
+              {% if is_archived_page %}<form method="post" action="/internal/legal-articles/return-to-review"><input type="hidden" name="article_id" value="{{ article.id }}"><button class="rounded-lg bg-yellow-500/20 border border-yellow-400/30 px-3 py-2 text-xs text-yellow-100">إرجاع للمراجعة</button></form>{% endif %}
+            </div>
+          </div>
 
-          <form method="get" action="/internal/legal-articles" class="flex gap-2">
-            <select
-              name="document_id"
-              class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white text-sm focus:outline-none focus:border-yellow-400"
-            >
-              <option value="">كل التشريعات</option>
-              {% for doc in documents %}
-              <option value="{{ doc.id }}" {% if selected_document and selected_document.id == doc.id %}selected{% endif %}>
-                {{ doc.title_ar }}
-              </option>
-              {% endfor %}
-            </select>
+          <div class="mt-4 rounded-xl bg-black/20 border border-white/10 p-4 text-sm leading-relaxed text-slate-100 whitespace-pre-wrap max-h-64 overflow-auto">{{ article.article_text }}</div>
 
-            <button
-              type="submit"
-              class="rounded-xl bg-white/10 px-4 py-3 text-sm text-white hover:bg-white/15 transition"
-            >
-              فلترة
-            </button>
-          </form>
+          <details class="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+            <summary class="cursor-pointer text-sm text-yellow-200">تعديل المادة</summary>
+            <form method="post" action="/internal/legal-articles/update" class="grid lg:grid-cols-2 gap-3 mt-4">
+              <input type="hidden" name="article_id" value="{{ article.id }}">
+              <input name="article_number" value="{{ article.article_number }}" required class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+              <input name="article_title" value="{{ article.article_title }}" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+              <input name="chapter" value="{{ article.chapter }}" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+              <input name="section" value="{{ article.section }}" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+              <input name="effective_date" value="{{ article.effective_date }}" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+              <input name="repealed_date" value="{{ article.repealed_date }}" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+              <select name="source_confidence" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">{% for key,label in source_confidence.items() %}<option value="{{ key }}" {% if article.source_confidence == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+              <input name="notes" value="{{ article.notes }}" class="rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">
+              <textarea name="article_text" required class="lg:col-span-2 rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-white">{{ article.article_text }}</textarea>
+              <button class="lg:col-span-2 rounded-xl bg-yellow-400 text-slate-950 font-bold py-3" onclick="return confirm('سيتم حفظ التعديل وإرجاع المادة إلى بانتظار المراجعة. متابعة؟')">حفظ التعديل وإرجاعها للمراجعة</button>
+            </form>
+          </details>
+
+          <div class="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+            <form method="post" action="/internal/legal-articles/delete"><input type="hidden" name="article_id" value="{{ article.id }}"><button class="rounded-lg bg-red-600/20 border border-red-400/40 px-3 py-2 text-xs text-red-100" onclick="return confirm('حذف هذه المادة وجميع بياناتها المرتبطة؟')">حذف المادة</button></form>
+          </div>
         </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-white/10 text-slate-400">
-                <th class="py-3 text-right">المادة</th>
-                <th class="py-3 text-right">التشريع</th>
-                <th class="py-3 text-right">الدولة</th>
-                <th class="py-3 text-right">الحالة</th>
-                <th class="py-3 text-right">المراجعة</th>
-                <th class="py-3 text-right">إجراءات</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {% for article in articles %}
-              {% set doc = document_map.get(article.document_id) %}
-              {% set country = country_map.get(article.country_id) %}
-
-              <tr class="border-b border-white/5 align-top">
-                <td class="py-4">
-                  <div class="font-semibold text-white">
-                    المادة {{ article.article_number }}
-                  </div>
-
-                  {% if article.article_title %}
-                  <div class="text-xs text-slate-400 mt-1">
-                    {{ article.article_title }}
-                  </div>
-                  {% endif %}
-
-                  <div class="text-xs text-slate-500 mt-2 max-w-md leading-relaxed">
-                    {{ article.article_text[:180] }}{% if article.article_text|length > 180 %}...{% endif %}
-                  </div>
-                </td>
-
-                <td class="py-4 text-slate-300">
-                  {{ doc.title_ar if doc else "غير محدد" }}
-                </td>
-
-                <td class="py-4 text-slate-300">
-                  {{ country.name_ar if country else "غير محدد" }}
-                </td>
-
-                <td class="py-4">
-                  <span class="inline-flex rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs text-slate-200">
-                    {{ article_statuses.get(article.status, article.status) }}
-                  </span>
-                </td>
-
-                <td class="py-4">
-                  {% if article.review_status == "approved" %}
-                  <span class="inline-flex rounded-full bg-green-500/10 border border-green-400/30 px-3 py-1 text-xs text-green-200">
-                    معتمدة
-                  </span>
-                  {% elif article.review_status == "pending_review" %}
-                  <span class="inline-flex rounded-full bg-yellow-500/10 border border-yellow-400/30 px-3 py-1 text-xs text-yellow-200">
-                    بانتظار المراجعة
-                  </span>
-                  {% elif article.review_status == "rejected" %}
-                  <span class="inline-flex rounded-full bg-red-500/10 border border-red-400/30 px-3 py-1 text-xs text-red-200">
-                    مرفوضة
-                  </span>
-                  {% else %}
-                  <span class="inline-flex rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs text-slate-200">
-                    {{ review_statuses.get(article.review_status, article.review_status) }}
-                  </span>
-                  {% endif %}
-                </td>
-
-                <td class="py-4">
-                  <form method="post" action="/internal/legal-articles/update-status" class="space-y-2">
-                    <input type="hidden" name="article_id" value="{{ article.id }}">
-
-                    <div class="flex gap-2">
-                      <select
-                        name="status"
-                        class="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-400"
-                      >
-                        {% for key, label in article_statuses.items() %}
-                        <option value="{{ key }}" {% if article.status == key %}selected{% endif %}>
-                          {{ label }}
-                        </option>
-                        {% endfor %}
-                      </select>
-
-                      <select
-                        name="review_status"
-                        class="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-400"
-                      >
-                        {% for key, label in review_statuses.items() %}
-                        <option value="{{ key }}" {% if article.review_status == key %}selected{% endif %}>
-                          {{ label }}
-                        </option>
-                        {% endfor %}
-                      </select>
-                    </div>
-
-                    <button
-                      type="submit"
-                      class="rounded-xl bg-white/10 px-3 py-2 text-xs text-white hover:bg-white/15 transition"
-                    >
-                      حفظ الحالة
-                    </button>
-                  </form>
-                </td>
-              </tr>
-              {% endfor %}
-
-              {% if articles|length == 0 %}
-              <tr>
-                <td colspan="6" class="py-8 text-center text-slate-400">
-                  لا توجد مواد قانونية بعد.
-                </td>
-              </tr>
-              {% endif %}
-            </tbody>
-          </table>
-        </div>
-
+        {% else %}
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-slate-400">لا توجد مواد في هذه الصفحة.</div>
+        {% endfor %}
       </div>
-
     </section>
-
   </main>
-
 </body>
 </html>
