@@ -105,6 +105,17 @@ async def assistant(request: Request):
     )
 
 
+@router.get("/workspace", response_class=HTMLResponse)
+async def workspace(request: Request):
+    """Workspace is now integrated inside each case page."""
+    user = require_user(request)
+
+    if not user:
+        return RedirectResponse(url="/login?next=/cases", status_code=303)
+
+    return RedirectResponse(url="/cases", status_code=303)
+
+
 @router.get("/features", response_class=HTMLResponse)
 async def features(request: Request):
     return templates.TemplateResponse(request=request, name="features.html", context=ctx(request))
@@ -158,4 +169,22 @@ async def profile(request: Request):
                 "recent_cases": recent_cases,
             },
         ),
+    )
+
+
+
+@router.get("/analysis-history", response_class=HTMLResponse)
+async def analysis_history(request: Request):
+    user = require_user(request)
+
+    if not user:
+        return RedirectResponse(url="/login?next=/analysis-history", status_code=303)
+
+    if is_staff_mode_user(user):
+        return RedirectResponse(url="/assistant", status_code=303)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="analysis_history.html",
+        context=ctx(request, {"user": user}),
     )

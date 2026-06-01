@@ -52,11 +52,13 @@
             {% if user %}
               {% if is_staff_mode %}
                 <a href="/internal/dashboard" class="nav-link px-4 py-2 rounded-lg text-sm text-yellow-300 hover:text-white hover:bg-yellow-500/10 transition-all">لوحة التحكم</a>
+                <a href="/cases" class="nav-link px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">ملفات العمل</a>
                 <a href="/assistant" class="mr-2 px-5 py-2 rounded-lg text-sm font-semibold bg-gold-400 text-navy-950 hover:bg-gold-500 transition-all shadow-lg shadow-gold-400/20">المساعد القانوني</a>
                 <a href="/internal/support-tickets" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">تذاكر الدعم</a>
                 <a href="/logout" class="px-4 py-2 rounded-lg text-sm text-red-300 hover:text-white hover:bg-red-500/10 transition-all">خروج</a>
               {% else %}
                 <a href="/cases" class="nav-link px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">قضاياي</a>
+                <a href="/cases" class="nav-link px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">ملفات العمل</a>
                 <a href="/assistant" class="mr-2 px-5 py-2 rounded-lg text-sm font-semibold bg-gold-400 text-navy-950 hover:bg-gold-500 transition-all shadow-lg shadow-gold-400/20">المساعد القانوني</a>
                 <a href="/support" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">الدعم</a>
                 <a href="/profile" class="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-all">ملفي الشخصي</a>

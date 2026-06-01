@@ -1,8 +1,11 @@
+import json
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.auth.dependencies import require_user
+from app.services.actor_identity import get_effective_user_id
 from app.database import (
     can_create_case,
     execute,
@@ -17,8 +20,46 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+
+def parse_case_message_output(row: dict) -> dict:
+    """Convert a stored case message / workspace tool output into a display-safe card."""
+    raw = row.get("answer_json") or "{}"
+
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else (raw or {})
+    except Exception:
+        data = {"content_markdown": str(raw)}
+
+    title = (
+        data.get("title")
+        or data.get("tool_label")
+        or row.get("question")
+        or "مخرج قانوني"
+    )
+
+    content = (
+        data.get("content_markdown")
+        or data.get("answer")
+        or data.get("professional_summary")
+        or data.get("short_answer")
+        or data.get("final_recommendation")
+        or ""
+    )
+
+    return {
+        "id": row.get("id"),
+        "title": title,
+        "content": content,
+        "tool_label": data.get("tool_label") or title,
+        "document_type": data.get("document_type") or row.get("assistant_mode") or "workspace_output",
+        "created_at": row.get("created_at"),
+        "raw": data,
+    }
+
+
 def build_context(request: Request, user, extra: dict | None = None):
-    raw_usage = user_usage(user["id"])
+    effective_user_id = get_effective_user_id(user)
+    raw_usage = user_usage(effective_user_id)
     raw_limits = user_limits(user["plan"])
 
     data = {
@@ -56,7 +97,7 @@ async def cases_list(request: Request):
         WHERE user_id = ?
         ORDER BY updated_at DESC
         """,
-        (user["id"],),
+        (get_effective_user_id(user),),
     )
 
     return templates.TemplateResponse(
@@ -79,7 +120,7 @@ async def new_case_page(request: Request):
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
-    allowed, msg = can_create_case(user["id"], user["plan"])
+    allowed, msg = can_create_case(get_effective_user_id(user), user["plan"])
 
     return templates.TemplateResponse(
         request=request,
@@ -112,7 +153,7 @@ async def create_case(
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
-    allowed, msg = can_create_case(user["id"], user["plan"])
+    allowed, msg = can_create_case(get_effective_user_id(user), user["plan"])
 
     if not allowed:
         return templates.TemplateResponse(
@@ -139,7 +180,7 @@ async def create_case(
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            user["id"],
+            get_effective_user_id(user),
             title.strip(),
             country.strip(),
             case_type.strip(),
@@ -170,7 +211,7 @@ async def case_detail(request: Request, case_id: int):
         WHERE id = ?
         AND user_id = ?
         """,
-        (case_id, user["id"]),
+        (case_id, get_effective_user_id(user)),
     )
 
     if not case:
@@ -184,7 +225,7 @@ async def case_detail(request: Request, case_id: int):
         AND user_id = ?
         ORDER BY created_at DESC
         """,
-        (case_id, user["id"]),
+        (case_id, get_effective_user_id(user)),
     )
 
     documents = fetch_all(
@@ -195,7 +236,7 @@ async def case_detail(request: Request, case_id: int):
         AND user_id = ?
         ORDER BY created_at DESC
         """,
-        (case_id, user["id"]),
+        (case_id, get_effective_user_id(user)),
     )
 
     notes = fetch_all(
@@ -206,7 +247,7 @@ async def case_detail(request: Request, case_id: int):
         AND user_id = ?
         ORDER BY created_at DESC
         """,
-        (case_id, user["id"]),
+        (case_id, get_effective_user_id(user)),
     )
 
     updates = fetch_all(
@@ -217,8 +258,32 @@ async def case_detail(request: Request, case_id: int):
         AND user_id = ?
         ORDER BY created_at DESC
         """,
-        (case_id, user["id"]),
+        (case_id, get_effective_user_id(user)),
     )
+
+    messages = fetch_all(
+        """
+        SELECT *
+        FROM case_messages
+        WHERE case_id = ?
+        AND user_id = ?
+        ORDER BY created_at DESC
+        """,
+        (case_id, get_effective_user_id(user)),
+    )
+
+    case_documents = fetch_all(
+        """
+        SELECT *
+        FROM case_documents
+        WHERE case_id = ?
+        AND user_id = ?
+        ORDER BY created_at DESC
+        """,
+        (case_id, get_effective_user_id(user)),
+    )
+
+    workspace_outputs = [parse_case_message_output(row) for row in messages]
 
     return templates.TemplateResponse(
         request=request,
@@ -232,6 +297,9 @@ async def case_detail(request: Request, case_id: int):
                 "documents": documents,
                 "notes": notes,
                 "updates": updates,
+                "messages": messages,
+                "case_documents": case_documents,
+                "workspace_outputs": workspace_outputs,
             },
         ),
     )
@@ -250,7 +318,7 @@ async def add_case_note(
 
     case = fetch_one(
         "SELECT id FROM cases WHERE id = ? AND user_id = ?",
-        (case_id, user["id"]),
+        (case_id, get_effective_user_id(user)),
     )
 
     if not case:
@@ -261,12 +329,12 @@ async def add_case_note(
         INSERT INTO case_notes (user_id, case_id, note, created_at)
         VALUES (?, ?, ?, ?)
         """,
-        (user["id"], case_id, note.strip(), now_iso()),
+        (get_effective_user_id(user), case_id, note.strip(), now_iso()),
     )
 
     execute(
         "UPDATE cases SET updated_at = ? WHERE id = ? AND user_id = ?",
-        (now_iso(), case_id, user["id"]),
+        (now_iso(), case_id, get_effective_user_id(user)),
     )
 
     return RedirectResponse(url=f"/cases/{case_id}", status_code=303)
@@ -286,7 +354,7 @@ async def add_case_update(
 
     case = fetch_one(
         "SELECT id FROM cases WHERE id = ? AND user_id = ?",
-        (case_id, user["id"]),
+        (case_id, get_effective_user_id(user)),
     )
 
     if not case:
@@ -297,12 +365,12 @@ async def add_case_update(
         INSERT INTO case_updates (user_id, case_id, update_text, hearing_date, created_at)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (user["id"], case_id, update_text.strip(), hearing_date.strip(), now_iso()),
+        (get_effective_user_id(user), case_id, update_text.strip(), hearing_date.strip(), now_iso()),
     )
 
     execute(
         "UPDATE cases SET updated_at = ? WHERE id = ? AND user_id = ?",
-        (now_iso(), case_id, user["id"]),
+        (now_iso(), case_id, get_effective_user_id(user)),
     )
 
     return RedirectResponse(url=f"/cases/{case_id}", status_code=303)

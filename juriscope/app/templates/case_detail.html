@@ -1,111 +1,341 @@
 {% extends "base.html" %}
-{% block title %}{{ case.title }} – Mizan{% endblock %}
+{% block title %}{{ case.title }} – ملف عمل Mizan{% endblock %}
+
 {% block content %}
-<section class="py-12 px-4 min-h-screen">
-  <div class="max-w-7xl mx-auto">
+{% set user_role = user.user_role|default('individual') %}
+{% set case_country = case.country|default(case.country_name|default('الأردن')) %}
+{% set case_type = case.case_type|default('غير محدد') %}
 
-    <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-8">
+<section
+  class="min-h-screen py-8 px-4"
+  id="workspace-page"
+  data-case-id="{{ case.id }}"
+  data-case-title="{{ case.title|e }}"
+  data-case-country="{{ case_country|e }}"
+  data-case-type="{{ case_type|e }}"
+  data-case-client="{{ user.full_name|default('')|e }}"
+  data-case-opponent="{{ case.opponent_name|default('')|e }}"
+  data-user-role="{{ user_role }}"
+>
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
       <div>
-        <div class="text-sm text-gold-400 mb-2">قضية #{{ case.id }}</div>
-        <h1 class="text-3xl font-bold">{{ case.title }}</h1>
-        <p class="text-slate-400 mt-2">{{ case.country }} · {{ case.case_type }} · {{ case.status }}</p>
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gold-400/10 border border-gold-400/20 text-gold-400 text-xs font-medium mb-4">
+          ⚖️ ملف قضية ذكي داخل Mizan Workspace
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-bold mb-2">{{ case.title }}</h1>
+        <p class="text-slate-400 leading-relaxed">
+          قضية #{{ case.id }} · {{ case_country }} · {{ case_type }} · {{ case.status }}
+        </p>
+        <p class="text-slate-500 text-sm mt-2 max-w-4xl leading-relaxed">
+          هذه الصفحة هي الـ Workspace الحقيقي للقضية: ملف العمل، المساعد القانوني، الأدوات التنفيذية، المخرجات، المستندات، المهام، الخط الزمني، الملاحظات، ومستجدات الجلسات في مكان واحد.
+        </p>
       </div>
-      <div class="flex gap-3">
-        <a href="/assistant" class="px-5 py-3 rounded-xl bg-gold-400 text-navy-950 font-semibold">اسأل داخل القضية</a>
-        <a href="/cases" class="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15">كل القضايا</a>
+      <div class="flex flex-wrap gap-2">
+        <a href="/cases" class="px-4 py-2 rounded-xl border border-white/10 text-slate-300 text-sm hover:text-white hover:border-white/20 transition-all">كل القضايا</a>
+        <a href="/assistant" class="px-4 py-2 rounded-xl border border-white/10 text-slate-300 text-sm hover:text-white hover:border-white/20 transition-all">المساعد العام</a>
+        <button id="workspace-load-last" class="px-4 py-2 rounded-xl bg-white/10 text-white text-sm hover:bg-white/15 transition-all">استيراد آخر تحليل</button>
+        <button id="workspace-export" class="px-4 py-2 rounded-xl border border-gold-400/30 text-gold-300 text-sm hover:bg-gold-400/10 transition-all">تصدير ملف العمل</button>
       </div>
     </div>
 
-    <div class="grid lg:grid-cols-3 gap-6">
-      <div class="space-y-6">
-        <div class="glass-card rounded-3xl border border-white/10 p-6">
-          <h2 class="font-semibold mb-4">بيانات القضية</h2>
-          <div class="space-y-3 text-sm text-slate-300">
-            <div>الدولة: {{ case.country }}</div>
-            <div>نوع القضية: {{ case.case_type }}</div>
-            {% if case.opponent_name %}<div>الخصم: {{ case.opponent_name }}</div>{% endif %}
-            {% if case.court_name %}<div>المحكمة: {{ case.court_name }}</div>{% endif %}
-            {% if case.case_number %}<div>رقم القضية: {{ case.case_number }}</div>{% endif %}
-            <div>تاريخ الإنشاء: {{ case.created_at }}</div>
-          </div>
-        </div>
-
-        <div id="notes" class="glass-card rounded-3xl border border-white/10 p-6">
-          <h2 class="font-semibold mb-4">ملاحظات خاصة</h2>
-          <form method="post" action="/cases/{{ case.id }}/notes" class="space-y-3 mb-5">
-            <textarea name="note" class="form-input min-h-[100px]" placeholder="ملاحظة خاصة للمحامي لاستخدامه الداخلي..."></textarea>
-            <button class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15">إضافة ملاحظة</button>
-          </form>
-          <div class="space-y-3">
-            {% for note in notes %}
-              <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-sm text-slate-300">
-                {{ note.note }}
-                <div class="text-[11px] text-slate-500 mt-2">{{ note.created_at }}</div>
-              </div>
-            {% else %}
-              <div class="text-sm text-slate-500">لا توجد ملاحظات بعد.</div>
-            {% endfor %}
-          </div>
-        </div>
-
-        <div id="updates" class="glass-card rounded-3xl border border-white/10 p-6">
-          <h2 class="font-semibold mb-4">مستجدات الجلسات</h2>
-          <form method="post" action="/cases/{{ case.id }}/updates" class="space-y-3 mb-5">
-            <textarea name="update_text" class="form-input min-h-[100px]" placeholder="أضف ما حدث في الجلسة أو أي مستجد جديد..."></textarea>
-            <button class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15">إضافة مستجد</button>
-          </form>
-          <div class="space-y-3">
-            {% for item in updates %}
-              <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-sm text-slate-300">
-                {{ item.update_text }}
-                <div class="text-[11px] text-slate-500 mt-2">{{ item.created_at }}</div>
-              </div>
-            {% else %}
-              <div class="text-sm text-slate-500">لا توجد مستجدات بعد.</div>
-            {% endfor %}
-          </div>
-        </div>
+    <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4" id="workspace-stats">
+      <div class="glass-card rounded-2xl border border-white/10 p-5">
+        <div class="text-xs text-slate-400 mb-2">المخرجات</div>
+        <div class="text-3xl font-bold text-white" data-stat="outputs">{{ workspace_outputs|length }}</div>
+        <div class="text-xs text-slate-500 mt-1">مذكرات، لوائح، خطابات، تحليلات</div>
       </div>
+      <div class="glass-card rounded-2xl border border-white/10 p-5">
+        <div class="text-xs text-slate-400 mb-2">المهام المفتوحة</div>
+        <div class="text-3xl font-bold text-white" data-stat="openTasks">0</div>
+        <div class="text-xs text-slate-500 mt-1">خطوات عمل لم تُنجز بعد</div>
+      </div>
+      <div class="glass-card rounded-2xl border border-white/10 p-5">
+        <div class="text-xs text-slate-400 mb-2">المستندات</div>
+        <div class="text-3xl font-bold text-white" data-stat="documents">{{ (documents|length) + (case_documents|length) }}</div>
+        <div class="text-xs text-slate-500 mt-1">مرفقات محفوظة أو مطلوبة</div>
+      </div>
+      <div class="glass-card rounded-2xl border border-white/10 p-5">
+        <div class="text-xs text-slate-400 mb-2">الأدوات المتبقية</div>
+        <div class="text-3xl font-bold text-white" data-stat="remainingTools">0</div>
+        <div class="text-xs text-slate-500 mt-1">حسب نوع المستخدم والقضية</div>
+      </div>
+    </div>
 
-      <div class="lg:col-span-2 space-y-6">
-        <div class="glass-card rounded-3xl border border-white/10 p-6">
-          <h2 class="font-semibold mb-4">الأسئلة والتحليلات المحفوظة</h2>
-          <div class="space-y-4">
-            {% for msg in messages %}
-              <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div class="text-xs text-gold-400 mb-2">{{ msg.created_at }}</div>
-                <div class="font-semibold text-white mb-3">السؤال:</div>
-                <p class="text-sm text-slate-300 leading-relaxed mb-4">{{ msg.question }}</p>
-                <div class="font-semibold text-white mb-2">التحليل محفوظ داخل النظام.</div>
-                <p class="text-xs text-slate-500">يمكن لاحقًا إضافة صفحة عرض تفصيلية لكل تحليل.</p>
+    <div class="grid xl:grid-cols-12 gap-6">
+      <aside class="xl:col-span-3 space-y-4">
+        <div class="glass-card rounded-2xl border border-white/10 p-5">
+          <h2 class="font-semibold text-white mb-4">بيانات ملف العمل</h2>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-2">عنوان الملف</label>
+              <input id="workspace-title" class="form-input" value="{{ case.title|e }}">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-2">الدولة</label>
+                <input id="workspace-country" class="form-input" value="{{ case_country|e }}">
               </div>
-            {% else %}
-              <div class="text-slate-500 text-sm">لم يتم حفظ أي تحليل داخل هذه القضية بعد. اختر هذه القضية من صفحة المساعد عند إرسال السؤال.</div>
-            {% endfor %}
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 mb-2">نوع القضية</label>
+                <input id="workspace-case-type" class="form-input" value="{{ case_type|e }}">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-2">طريقة بناء الرد</label>
+              <select id="workspace-audience" class="form-input">
+                <option value="individual" {% if user_role == 'individual' %}selected{% endif %}>شخص عادي</option>
+                <option value="lawyer" {% if user_role == 'lawyer' %}selected{% endif %}>محامٍ</option>
+                <option value="company" {% if user_role == 'company' %}selected{% endif %}>شركة / رجل أعمال</option>
+                <option value="judge" {% if user_role == 'judge' %}selected{% endif %}>قاضٍ / باحث قضائي</option>
+                <option value="law_student" {% if user_role == 'law_student' %}selected{% endif %}>طالب حقوق</option>
+                <option value="legal_researcher" {% if user_role == 'legal_researcher' %}selected{% endif %}>باحث قانوني</option>
+                <option value="government_employee" {% if user_role == 'government_employee' %}selected{% endif %}>جهة حكومية / موظف عام</option>
+              </select>
+            </div>
+            <input id="workspace-case-id" type="hidden" value="{{ case.id }}">
+            <input id="workspace-client" type="hidden" value="{{ user.full_name|default('')|e }}">
+            <input id="workspace-opponent" type="hidden" value="{{ case.opponent_name|default('')|e }}">
+            <input id="workspace-priority" type="hidden" value="normal">
+            <input id="workspace-status-select" type="hidden" value="active">
           </div>
         </div>
 
-        <div class="glass-card rounded-3xl border border-white/10 p-6">
-          <h2 class="font-semibold mb-4">المستندات المحللة</h2>
-          <div class="space-y-4">
-            {% for doc in documents %}
-              <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <div class="font-semibold text-white">{{ doc.filename }}</div>
-                    <div class="text-xs text-slate-500 mt-1">{{ doc.content_type }} · {{ doc.created_at }}</div>
+        <div class="glass-card rounded-2xl border border-white/10 p-3">
+          <nav class="space-y-2" id="workspace-tabs">
+            <button data-tab="overview" class="workspace-tab-btn w-full text-right px-4 py-3 rounded-xl text-sm transition-all bg-gold-400 text-navy-950 font-bold">ملف العمل</button>
+            <button data-tab="assistant" class="workspace-tab-btn w-full text-right px-4 py-3 rounded-xl text-sm transition-all text-slate-300 hover:bg-white/5">المساعد داخل القضية</button>
+            <button data-tab="tools" class="workspace-tab-btn w-full text-right px-4 py-3 rounded-xl text-sm transition-all text-slate-300 hover:bg-white/5">الأدوات التنفيذية</button>
+            <button data-tab="outputs" class="workspace-tab-btn w-full text-right px-4 py-3 rounded-xl text-sm transition-all text-slate-300 hover:bg-white/5">المخرجات</button>
+            <button data-tab="documents" class="workspace-tab-btn w-full text-right px-4 py-3 rounded-xl text-sm transition-all text-slate-300 hover:bg-white/5">المستندات</button>
+            <button data-tab="tasks" class="workspace-tab-btn w-full text-right px-4 py-3 rounded-xl text-sm transition-all text-slate-300 hover:bg-white/5">المهام</button>
+            <button data-tab="timeline" class="workspace-tab-btn w-full text-right px-4 py-3 rounded-xl text-sm transition-all text-slate-300 hover:bg-white/5">الخط الزمني</button>
+            <button data-tab="notes" class="workspace-tab-btn w-full text-right px-4 py-3 rounded-xl text-sm transition-all text-slate-300 hover:bg-white/5">الملاحظات والجلسات</button>
+          </nav>
+        </div>
+
+        <div class="glass-card rounded-2xl border border-gold-400/20 bg-gold-400/5 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="font-semibold text-gold-300">حالة العمل</h2>
+            <span id="workspace-save-indicator" class="text-[11px] text-slate-500">محفوظ محليًا</span>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">الأدوات التي تُنفّذ داخل هذه الصفحة تُحفظ كمخرجات مرتبطة بالقضية، أما المهام والمستندات اليدوية فتُحفظ محليًا لكل قضية.</p>
+        </div>
+      </aside>
+
+      <main class="xl:col-span-9 space-y-4">
+        <section class="workspace-panel" data-panel="overview">
+          <div class="glass-card rounded-2xl border border-white/10 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 class="font-semibold text-white text-xl">ملف العمل الحالي</h2>
+                <p class="text-sm text-slate-400 mt-1">هذه هي قاعدة العمل التي تعتمد عليها الأدوات والمساعد داخل هذه القضية.</p>
+              </div>
+              <button id="workspace-build-plan" class="text-xs px-3 py-2 rounded-xl bg-gold-400 text-navy-950 font-bold hover:bg-gold-500">بناء خطة عمل</button>
+            </div>
+            <textarea id="workspace-question" class="form-input min-h-[220px]" placeholder="اكتب الوقائع الأساسية، الهدف، المواعيد، المستندات، وأي ملاحظات مهمة...">{{ case.summary|default('') }}</textarea>
+            <textarea id="workspace-analysis-json" class="form-input min-h-[120px] mt-3 hidden" placeholder="اختياري: JSON للتحليل السابق"></textarea>
+            <div class="flex items-center justify-between mt-3">
+              <button id="workspace-toggle-json" class="text-xs text-slate-400 hover:text-white">إظهار/إخفاء JSON التحليل</button>
+              <span id="workspace-status" class="text-xs text-slate-500">جاهز</span>
+            </div>
+          </div>
+
+          <div class="glass-card rounded-2xl border border-gold-400/20 bg-gold-400/5 p-5 mt-4">
+            <h2 class="font-semibold text-gold-300 text-xl mb-2">المساعد القانوني داخل القضية</h2>
+            <p class="text-sm text-slate-400 mb-4">اسأل هنا، وسيتم ربط السؤال مباشرة بهذه القضية واستخدام بيانات ملف العمل الحالي كخلفية.</p>
+            <div class="space-y-3">
+              <textarea id="case-assistant-question" class="form-input min-h-[110px]" placeholder="اكتب سؤالًا مرتبطًا بهذه القضية..."></textarea>
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="case-assistant-send" class="px-5 py-2.5 rounded-xl bg-gold-400 text-navy-950 font-bold hover:bg-gold-500">اسأل داخل القضية</button>
+                <button id="case-assistant-use-workspace" class="px-4 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 text-sm">استخدم ملف العمل كسؤال</button>
+                <span id="case-assistant-status" class="text-xs text-slate-500"></span>
+              </div>
+              <div id="case-assistant-result" class="hidden rounded-2xl border border-white/10 bg-navy-950/50 p-4 text-sm text-slate-200 leading-loose whitespace-pre-wrap"></div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4 mt-4">
+            <div class="glass-card rounded-2xl border border-white/10 p-5">
+              <h3 class="font-semibold text-white mb-3">بيانات القضية</h3>
+              <div class="space-y-2 text-sm text-slate-300">
+                {% if case.opponent_name %}<div>الخصم: {{ case.opponent_name }}</div>{% endif %}
+                {% if case.court_name %}<div>المحكمة: {{ case.court_name }}</div>{% endif %}
+                {% if case.case_number %}<div>رقم القضية: {{ case.case_number }}</div>{% endif %}
+                <div>تاريخ الإنشاء: {{ case.created_at }}</div>
+              </div>
+            </div>
+            <div class="glass-card rounded-2xl border border-white/10 p-5">
+              <h3 class="font-semibold text-white mb-3">أقرب خطوات</h3>
+              <div id="workspace-next-actions" class="space-y-2 text-sm text-slate-300"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="workspace-panel hidden" data-panel="assistant">
+          <div class="glass-card rounded-2xl border border-gold-400/20 bg-gold-400/5 p-5">
+            <h2 class="font-semibold text-gold-300 text-xl mb-2">مساعد القضية</h2>
+            <p class="text-sm text-slate-400 mb-4">هذا المساعد مخصص لهذه القضية فقط، وليس مساعدًا عامًا منفصلًا.</p>
+            <textarea id="case-assistant-question-tab" class="form-input min-h-[160px]" placeholder="اسأل عن دفوع، مذكرة، مستند ناقص، مدة، استراتيجية، أو صياغة..."></textarea>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button id="case-assistant-send-tab" class="px-5 py-2.5 rounded-xl bg-gold-400 text-navy-950 font-bold hover:bg-gold-500">إرسال</button>
+              <button id="case-assistant-use-workspace-tab" class="px-4 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 text-sm">استخدام ملف العمل</button>
+            </div>
+            <div id="case-assistant-result-tab" class="hidden mt-4 rounded-2xl border border-white/10 bg-navy-950/50 p-4 text-sm text-slate-200 leading-loose whitespace-pre-wrap"></div>
+          </div>
+        </section>
+
+        <section class="workspace-panel hidden" data-panel="tools">
+          <div class="glass-card rounded-2xl border border-gold-400/20 bg-gold-400/5 p-5">
+            <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 class="font-semibold text-gold-300 text-xl">الأدوات التنفيذية للقضية</h2>
+                <p class="text-sm text-slate-400 mt-1">اضغط على أداة لإنشاء مخرج مرتبط بهذه القضية. بعد استخدامها تختفي من القائمة وتظهر في المخرجات.</p>
+              </div>
+              <button id="workspace-reset-tools" class="text-xs text-slate-300 hover:text-white border border-white/10 rounded-lg px-3 py-2">إعادة الأدوات</button>
+            </div>
+            <div id="workspace-tools-list" class="grid md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+          </div>
+        </section>
+
+        <section class="workspace-panel hidden" data-panel="outputs">
+          <div class="glass-card rounded-2xl border border-white/10 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 class="font-semibold text-white text-xl">المخرجات العملية</h2>
+                <p class="text-sm text-slate-400 mt-1">كل أداة يتم تشغيلها داخل القضية تُحفظ هنا وتبقى مرتبطة بملف القضية.</p>
+              </div>
+              <button id="workspace-clear-outputs" class="text-xs px-3 py-2 rounded-xl border border-red-400/20 text-red-200 hover:bg-red-500/10">مسح المخرجات المحلية</button>
+            </div>
+
+            <div class="space-y-4 mb-5">
+              {% for item in workspace_outputs %}
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <div>
+                      <div class="font-semibold text-white">{{ item.title }}</div>
+                      <div class="text-xs text-slate-500 mt-1">{{ item.document_type }} · {{ item.created_at }}</div>
+                    </div>
+                    <span class="text-xs text-gold-300">محفوظ داخل القضية</span>
                   </div>
-                  <div class="text-xs text-gold-400">محلل</div>
+                  <div class="text-sm text-slate-200 leading-loose whitespace-pre-wrap">{{ item.content }}</div>
                 </div>
-              </div>
-            {% else %}
-              <div class="text-slate-500 text-sm">لا توجد مستندات محفوظة بعد. ارفع مستندًا من صفحة المساعد واربطه بهذه القضية.</div>
-            {% endfor %}
+              {% else %}
+                <div class="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">لا توجد مخرجات محفوظة بعد. شغّل أداة من تبويب الأدوات.</div>
+              {% endfor %}
+            </div>
+            <div id="workspace-output" class="space-y-4"></div>
           </div>
-        </div>
-      </div>
-    </div>
+        </section>
 
+        <section class="workspace-panel hidden" data-panel="documents">
+          <div class="glass-card rounded-2xl border border-white/10 p-5">
+            <h2 class="font-semibold text-white text-xl mb-4">مركز المستندات</h2>
+
+            <div class="space-y-3 mb-5">
+              {% for doc in documents %}
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <div class="font-semibold text-white">{{ doc.filename }}</div>
+                      <div class="text-xs text-slate-500 mt-1">{{ doc.mime_type|default(doc.content_type|default('')) }} · {{ doc.created_at }}</div>
+                    </div>
+                    <div class="text-xs text-gold-400">محلل</div>
+                  </div>
+                </div>
+              {% endfor %}
+              {% for doc in case_documents %}
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div class="font-semibold text-white">{{ doc.filename }}</div>
+                  <div class="text-xs text-slate-500 mt-1">{{ doc.content_type }} · {{ doc.created_at }}</div>
+                </div>
+              {% endfor %}
+            </div>
+
+            <div class="grid md:grid-cols-12 gap-3 mb-4">
+              <input id="doc-name" class="form-input md:col-span-4" placeholder="اسم المستند">
+              <select id="doc-type" class="form-input md:col-span-3"><option>عقد</option><option>حكم</option><option>إنذار</option><option>مراسلة</option><option>إثبات دفع</option><option>هوية/وكالة</option><option>أخرى</option></select>
+              <select id="doc-status" class="form-input md:col-span-3"><option value="available">متوفر</option><option value="needed">مطلوب</option><option value="review">بحاجة مراجعة</option></select>
+              <button id="add-document" class="md:col-span-2 rounded-xl bg-gold-400 text-navy-950 font-bold px-4 py-2">إضافة</button>
+            </div>
+            <div id="documents-list" class="space-y-2"></div>
+          </div>
+        </section>
+
+        <section class="workspace-panel hidden" data-panel="tasks">
+          <div class="glass-card rounded-2xl border border-white/10 p-5">
+            <h2 class="font-semibold text-white text-xl mb-4">مهام العمل</h2>
+            <div class="grid md:grid-cols-12 gap-3 mb-4">
+              <input id="task-title" class="form-input md:col-span-5" placeholder="المهمة المطلوبة">
+              <input id="task-due" type="date" class="form-input md:col-span-3">
+              <select id="task-priority" class="form-input md:col-span-2"><option value="normal">عادي</option><option value="high">مهم</option><option value="urgent">عاجل</option></select>
+              <button id="add-task" class="md:col-span-2 rounded-xl bg-gold-400 text-navy-950 font-bold px-4 py-2">إضافة</button>
+            </div>
+            <div id="tasks-list" class="space-y-2"></div>
+          </div>
+        </section>
+
+        <section class="workspace-panel hidden" data-panel="timeline">
+          <div class="glass-card rounded-2xl border border-white/10 p-5">
+            <h2 class="font-semibold text-white text-xl mb-4">الخط الزمني</h2>
+            <form method="post" action="/cases/{{ case.id }}/updates" class="grid md:grid-cols-12 gap-3 mb-5">
+              <input name="hearing_date" type="date" class="form-input md:col-span-3">
+              <input name="update_text" class="form-input md:col-span-7" placeholder="مستجد أو جلسة أو مهلة">
+              <button class="md:col-span-2 rounded-xl bg-gold-400 text-navy-950 font-bold px-4 py-2">حفظ مستجد</button>
+            </form>
+            <div class="space-y-3 mb-5">
+              {% for item in updates %}
+                <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-sm text-slate-300">
+                  {{ item.update_text }}
+                  <div class="text-[11px] text-slate-500 mt-2">{{ item.hearing_date or item.created_at }}</div>
+                </div>
+              {% else %}
+                <div class="text-sm text-slate-500">لا توجد مستجدات محفوظة بعد.</div>
+              {% endfor %}
+            </div>
+
+            <div class="grid md:grid-cols-12 gap-3 mb-4">
+              <input id="timeline-date" type="date" class="form-input md:col-span-3">
+              <input id="timeline-title" class="form-input md:col-span-5" placeholder="عنوان الحدث المحلي">
+              <select id="timeline-type" class="form-input md:col-span-2"><option>واقعة</option><option>جلسة</option><option>تبليغ</option><option>مهلة</option><option>مستند</option></select>
+              <button id="add-timeline" class="md:col-span-2 rounded-xl bg-white/10 text-white font-bold px-4 py-2">إضافة محليًا</button>
+            </div>
+            <div id="timeline-list" class="space-y-2"></div>
+          </div>
+        </section>
+
+        <section class="workspace-panel hidden" data-panel="notes">
+          <div class="grid lg:grid-cols-2 gap-4">
+            <div class="glass-card rounded-2xl border border-white/10 p-5">
+              <h2 class="font-semibold text-white text-xl mb-4">ملاحظات القضية المحفوظة</h2>
+              <form method="post" action="/cases/{{ case.id }}/notes" class="space-y-3 mb-5">
+                <textarea name="note" class="form-input min-h-[120px]" placeholder="ملاحظة خاصة للمحامي أو لفريق العمل..."></textarea>
+                <button class="w-full py-2.5 rounded-xl bg-gold-400 text-navy-950 font-bold">إضافة ملاحظة محفوظة</button>
+              </form>
+              <div class="space-y-3">
+                {% for note in notes %}
+                  <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-sm text-slate-300">
+                    {{ note.note }}
+                    <div class="text-[11px] text-slate-500 mt-2">{{ note.created_at }}</div>
+                  </div>
+                {% else %}
+                  <div class="text-sm text-slate-500">لا توجد ملاحظات محفوظة بعد.</div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="glass-card rounded-2xl border border-white/10 p-5">
+              <h2 class="font-semibold text-white text-xl mb-4">ملاحظات Workspace المحلية</h2>
+              <textarea id="workspace-notes" class="form-input min-h-[360px]" placeholder="أفكار داخلية، أسئلة للعميل، نقاط لمناقشتها، أو تعليمات للمتابعة..."></textarea>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/workspace.js?v=case-integrated-workspace-20260601-1"></script>
 {% endblock %}

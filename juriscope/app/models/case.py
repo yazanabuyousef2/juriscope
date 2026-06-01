@@ -20,6 +20,7 @@ class Case(Base):
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
 
+    country: Mapped[str] = mapped_column(String(100), nullable=False, default="الأردن")
     country_code: Mapped[str] = mapped_column(String(10), nullable=False, default="JO")
     country_name: Mapped[str] = mapped_column(String(100), nullable=False, default="الأردن")
 
@@ -131,6 +132,7 @@ class Analysis(Base):
     country_code: Mapped[str] = mapped_column(String(10), nullable=False, default="")
     country_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     case_type: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    assistant_mode: Mapped[str] = mapped_column(String(100), nullable=False, default="case_analysis")
     plan_code: Mapped[str] = mapped_column(String(50), nullable=False, default="free")
     user_role: Mapped[str] = mapped_column(String(50), nullable=False, default="individual")
 

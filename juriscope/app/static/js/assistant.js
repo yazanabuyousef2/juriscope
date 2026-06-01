@@ -193,7 +193,7 @@ function getRequestTypeLabel(type) {
 function getAudienceLabel(mode) {
   const labels = {
     legal_professional: "مهني قانوني",
-    individual: "مهني قانوني",
+    individual: "شخص عادي",
     lawyer: "محامي",
     company: "شركة / رجل أعمال",
     judge: "قاضٍ",
@@ -223,6 +223,8 @@ function getStrictCardsForRequest(data) {
     "strategic_recommendations",
     "missing_information",
     "final_recommendation",
+    "professional_tools",
+    "action_checklist",
     "confidence",
     "legal_sources",
     "disclaimer",
@@ -268,6 +270,10 @@ function getStrictCardsForRequest(data) {
 }
 
 function getCardsToShow(data) {
+  const fromBackend = asArray(data.cards_to_show).filter(Boolean);
+  if (fromBackend.length) {
+    return fromBackend;
+  }
   return getStrictCardsForRequest(data);
 }
 
@@ -425,6 +431,77 @@ function renderCaseTypeCorrectionHtml(data) {
       titleColor: "text-yellow-300",
     }
   );
+}
+
+
+function normalizeToolItem(tool) {
+  if (tool && typeof tool === "object") {
+    return {
+      key: tool.key || "",
+      label: tool.label || tool.title || itemText(tool),
+      description: tool.description || "توليد مخرج عملي من التحليل الحالي",
+    };
+  }
+  return {
+    key: "",
+    label: itemText(tool),
+    description: "اضغط لتوليد هذا المخرج داخل مساحة عمل Mizan",
+  };
+}
+
+function renderProfessionalToolsCard(data) {
+  const tools = asArray(data.professional_tools).map(normalizeToolItem).filter((tool) => tool.label);
+  if (!tools.length) return "";
+
+  const buttons = tools.map((tool) => `
+    <button
+      class="workspace-tool-btn text-right rounded-xl border border-gold-400/15 bg-gold-400/5 hover:bg-gold-400/10 hover:border-gold-400/35 p-4 transition-all"
+      data-tool-key="${escapeHtml(tool.key)}"
+      data-tool-label="${escapeHtml(tool.label)}"
+    >
+      <div class="text-sm font-semibold text-white mb-1">${escapeHtml(tool.label)}</div>
+      <div class="text-xs text-slate-400 leading-relaxed">${escapeHtml(tool.description)}</div>
+    </button>
+  `).join("");
+
+  return `
+    <div id="professional-tools-card" class="glass-card rounded-2xl border border-gold-400/20 bg-gold-400/5 p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <div class="text-xs font-semibold text-gold-300 mb-1">أدوات مقترحة داخل Mizan</div>
+          <p class="text-xs text-slate-400 leading-relaxed">اضغط على أي أداة ليقوم Mizan بإنشائها، ثم ستظهر لك الأدوات المتبقية فقط.</p>
+        </div>
+        <a href="/cases" class="text-xs px-3 py-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all">فتح ملف قضية</a>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">${buttons}</div>
+    </div>
+  `;
+}
+
+function renderWorkspaceToolOutput(data) {
+  const missing = hasList(data.missing_information)
+    ? `<div class="mt-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4"><div class="text-xs font-semibold text-yellow-300 mb-2">معلومات ناقصة</div>${listToHtml(data.missing_information)}</div>`
+    : "";
+
+  const nextActions = hasList(data.next_actions)
+    ? `<div class="mt-4 rounded-xl border border-green-500/20 bg-green-500/5 p-4"><div class="text-xs font-semibold text-green-300 mb-2">الخطوات التالية</div>${listToHtml(data.next_actions, true)}</div>`
+    : "";
+
+  return `
+    <div class="glass-card rounded-2xl border border-gold-400/20 bg-gold-400/5 p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <div class="text-xs font-semibold text-gold-300 mb-1">مخرج أداة Workspace</div>
+          <h3 class="text-lg font-bold text-white">${escapeHtml(data.title || data.tool_label || "مخرج قانوني")}</h3>
+        </div>
+        <button class="copy-generated-tool-btn text-xs px-3 py-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all">نسخ</button>
+      </div>
+      <div class="generated-tool-content text-sm text-slate-200 leading-loose whitespace-pre-wrap bg-navy-950/50 border border-white/10 rounded-xl p-4">${textWithBreaks(data.content_markdown || "")}</div>
+      ${missing}
+      ${nextActions}
+      <div class="mt-4 text-xs text-slate-400 border-t border-white/10 pt-3">${escapeHtml(data.quality_warning || "هذا مخرج أولي يحتاج مراجعة مختص قبل الاستخدام الرسمي.")}</div>
+    </div>
+  `;
 }
 
 function renderCardByName(cardName, data) {
@@ -674,6 +751,49 @@ function renderCardByName(cardName, data) {
         </div>
       `;
 
+    case "professional_tools":
+      return renderProfessionalToolsCard(data);
+
+    case "action_checklist":
+      if (!hasList(data.action_checklist)) return "";
+      return cardHtml(
+        "قائمة تنفيذ عملية",
+        listToHtml(data.action_checklist, true),
+        { border: "border-green-500/20", bg: "bg-green-500/5", titleColor: "text-green-300" }
+      );
+
+    case "source_reasoning":
+      if (!hasText(data.source_reasoning)) return "";
+      return cardHtml(
+        "لماذا اختار Mizan هذه المصادر؟",
+        `<p>${textWithBreaks(data.source_reasoning)}</p>`,
+        { border: "border-blue-500/20", bg: "bg-blue-500/5", titleColor: "text-blue-300" }
+      );
+
+    case "risk_matrix":
+      if (!hasList(data.risk_matrix)) return "";
+      return cardHtml(
+        "مصفوفة المخاطر",
+        listToHtml(data.risk_matrix),
+        { border: "border-red-500/20", bg: "bg-red-500/5", titleColor: "text-red-300" }
+      );
+
+    case "litigation_timeline":
+      if (!hasList(data.litigation_timeline)) return "";
+      return cardHtml(
+        "الخط الزمني الإجرائي",
+        listToHtml(data.litigation_timeline, true),
+        { border: "border-purple-500/20", bg: "bg-purple-500/5", titleColor: "text-purple-300" }
+      );
+
+    case "document_intelligence":
+      if (!hasList(data.document_intelligence)) return "";
+      return cardHtml(
+        "ذكاء المستندات",
+        listToHtml(data.document_intelligence),
+        { border: "border-blue-500/20", bg: "bg-blue-500/5", titleColor: "text-blue-300" }
+      );
+
     case "confidence": {
       if (!hasText(data.confidence_level) && !hasText(data.confidence_reason) && !hasText(data.legal_accuracy_note)) return "";
       const confLevel = (data.confidence_level || "").trim();
@@ -721,12 +841,14 @@ function renderMetaHeader(data) {
   const detectedCaseType = data.detected_case_type || "غير محدد";
   const selectedCaseType = data.selected_case_type || "غير محدد";
   const assistantModeLabel = getRequestTypeLabel(data.assistant_mode || data.request_type || "");
+  const audienceLabel = data.persona_label || getAudienceLabel(data.audience_mode || data.effective_user_role || "");
   const correctionNote = data.case_type_correction_note || "";
 
   return `
     <div class="glass-card rounded-2xl border border-white/10 p-4">
       <div class="flex flex-wrap gap-2 mb-2">
         ${assistantModeLabel ? badge(assistantModeLabel, "bg-gold-400/10 border-gold-400/30 text-gold-200") : ""}
+        ${audienceLabel ? badge(`طريقة الرد: ${audienceLabel}`, "bg-blue-500/10 border-blue-400/30 text-blue-200") : ""}
         ${detectedCaseType && detectedCaseType !== "غير محدد" ? badge(`نوع القضية: ${detectedCaseType}`, "bg-purple-500/10 border-purple-400/30 text-purple-200") : ""}
       </div>
       ${correctionNote ? `<p class="text-xs text-amber-300 mt-2 leading-relaxed">${escapeHtml(correctionNote)}</p>` : ""}
@@ -863,13 +985,45 @@ function renderLegalResult(data, questionText = "") {
     if (html) htmlParts.push(html);
   });
 
+  htmlParts.push(`<div id="workspace-tool-results" class="space-y-4"></div>`);
+
   htmlParts.push(`
-    <button id="new-analysis-btn" class="w-full py-3 rounded-xl border border-white/15 text-sm text-slate-300 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all">
-      بدء تحليل جديد
-    </button>
+    <div class="glass-card rounded-2xl border border-white/10 p-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex-1">
+          <p class="text-xs text-slate-400 mb-2">هل كان التحليل مفيدًا؟</p>
+          <div class="flex gap-2">
+            <button id="feedback-positive-btn" class="flex items-center gap-1 text-xs px-3 py-2 rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 hover:bg-green-500/20 transition-all" data-rating="1">
+              👍 مفيد
+            </button>
+            <button id="feedback-negative-btn" class="flex items-center gap-1 text-xs px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 transition-all" data-rating="-1">
+              👎 غير مفيد
+            </button>
+            <span id="feedback-thanks" class="hidden text-xs text-green-300 self-center">✅ شكراً على تقييمك</span>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button id="export-copy-btn" class="text-xs px-3 py-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all">
+            📋 نسخ الخلاصة
+          </button>
+          <a href="/analysis-history" class="text-xs px-3 py-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-all">
+            📂 السجل
+          </a>
+          <button id="new-analysis-btn" class="text-xs px-3 py-2 rounded-xl bg-white/10 text-white hover:bg-white/15 transition-all">
+            + جديد
+          </button>
+        </div>
+      </div>
+    </div>
   `);
 
   resultState.innerHTML = htmlParts.join("");
+  window._lastAnalysisData = data || {};
+  try {
+    localStorage.setItem("mizan_last_analysis", JSON.stringify(data || {}));
+  } catch (e) {
+    console.warn("Could not save last analysis", e);
+  }
 
   if (questionText) {
     addConversationTurn(questionText, data);
@@ -1009,9 +1163,72 @@ function resetCurrentQuestionInput() {
   if (c) c.textContent = "0 حرف";
 }
 
+
+async function runWorkspaceToolFromResult(button) {
+  const currentAnalysisData = window._lastAnalysisData || {};
+  const toolLabel = button.dataset.toolLabel || button.textContent.trim();
+  const toolKey = button.dataset.toolKey || "";
+  const questionText = conversationHistory.length ? conversationHistory[conversationHistory.length - 1]?.question || "" : valueOf("question-input", "");
+
+  button.disabled = true;
+  const originalHtml = button.innerHTML;
+  button.innerHTML = `<div class="text-sm font-semibold text-white">جاري إنشاء ${escapeHtml(toolLabel)}...</div>`;
+
+  try {
+    const payload = {
+      tool_key: toolKey,
+      tool_label: toolLabel,
+      question: questionText || currentAnalysisData.short_answer || currentAnalysisData.professional_summary || "استخدم التحليل السابق لبناء الأداة المطلوبة.",
+      country: valueOf("country", "الأردن"),
+      case_type: getSelectedCaseType(),
+      selected_case_type: getSelectedCaseType(),
+      assistant_mode: "workspace_tool",
+      audience_mode: valueOf("audience-mode-select", getAssistantPageConfig().userRole || "individual"),
+      case_id: valueOf("case-id-select", "") ? parseInt(valueOf("case-id-select", "")) : null,
+      analysis: currentAnalysisData,
+      used_tools: currentAnalysisData._used_workspace_tools || [],
+      available_tools: asArray(currentAnalysisData.professional_tools).map((tool) => normalizeToolItem(tool).label),
+    };
+
+    const response = await fetch("/api/workspace-tool", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await parseApiResponse(response);
+    if (!response.ok) throw new Error(data.detail || data.error || "تعذر تشغيل الأداة.");
+
+    currentAnalysisData._used_workspace_tools = [...(currentAnalysisData._used_workspace_tools || []), data.tool_label || toolLabel];
+    currentAnalysisData.workspace_tool_outputs = [...(currentAnalysisData.workspace_tool_outputs || []), data];
+    if (hasList(data.remaining_tools)) {
+      currentAnalysisData.professional_tools = data.remaining_tools;
+      const toolsCard = $("professional-tools-card");
+      if (toolsCard) {
+        const replacement = renderProfessionalToolsCard(currentAnalysisData);
+        if (replacement) toolsCard.outerHTML = replacement;
+        else toolsCard.remove();
+      }
+    }
+
+    const resultsBox = $("workspace-tool-results");
+    if (resultsBox) {
+      resultsBox.insertAdjacentHTML("afterbegin", renderWorkspaceToolOutput(data));
+    }
+    setupDynamicResultButtons();
+  } catch (error) {
+    console.error("Workspace tool error", error);
+    button.disabled = false;
+    button.innerHTML = originalHtml;
+    const resultsBox = $("workspace-tool-results");
+    if (resultsBox) {
+      resultsBox.insertAdjacentHTML("afterbegin", cardHtml("تعذر تشغيل الأداة", `<p class="text-red-200">${escapeHtml(error.message || "حدث خطأ أثناء توليد الأداة.")}</p>`, { border: "border-red-500/20", bg: "bg-red-500/5", titleColor: "text-red-300" }));
+    }
+  }
+}
+
 function setupDynamicResultButtons() {
   const newButton = $("new-analysis-btn");
-
   if (newButton) {
     newButton.addEventListener("click", () => {
       showOnly("empty-state");
@@ -1021,22 +1238,88 @@ function setupDynamicResultButtons() {
   }
 
   const copyButton = $("copy-summary-btn");
-
   if (copyButton) {
     copyButton.addEventListener("click", async () => {
       const summary = $("res-lawyer-summary")?.textContent || "";
-
       if (!summary) return;
-
       await navigator.clipboard.writeText(summary);
-
       copyButton.textContent = "تم النسخ";
-
-      setTimeout(() => {
-        copyButton.textContent = "نسخ";
-      }, 1500);
+      setTimeout(() => { copyButton.textContent = "نسخ"; }, 1500);
     });
   }
+
+  const exportCopyBtn = $("export-copy-btn");
+  if (exportCopyBtn) {
+    exportCopyBtn.addEventListener("click", async () => {
+      const resultState = $("result-state");
+      const summary = $("res-lawyer-summary")?.textContent?.trim()
+        || resultState?.querySelector(".text-gold-400 + p")?.textContent?.trim()
+        || "";
+      const allText = resultState?.innerText?.trim() || "";
+      const textToCopy = summary || allText.slice(0, 2000);
+      if (!textToCopy) return;
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        exportCopyBtn.textContent = "✅ تم النسخ";
+        setTimeout(() => { exportCopyBtn.textContent = "📋 نسخ الخلاصة"; }, 1800);
+      } catch {
+        exportCopyBtn.textContent = "خطأ في النسخ";
+      }
+    });
+  }
+
+  const currentAnalysisData = window._lastAnalysisData || {};
+  [
+    { id: "feedback-positive-btn", rating: 1 },
+    { id: "feedback-negative-btn", rating: -1 },
+  ].forEach(({ id, rating }) => {
+    const btn = $(id);
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      try {
+        const body = {
+          analysis_id: currentAnalysisData.id || currentAnalysisData.analysis_id || null,
+          rating,
+          comment: "",
+          assistant_mode: currentAnalysisData.assistant_mode || "",
+          confidence_level: currentAnalysisData.confidence_level || "",
+        };
+        await fetch("/api/analysis-feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const thanks = $("feedback-thanks");
+        if (thanks) thanks.classList.remove("hidden");
+        $("feedback-positive-btn")?.setAttribute("disabled", "true");
+        $("feedback-negative-btn")?.setAttribute("disabled", "true");
+      } catch (e) {
+        console.error("Feedback error", e);
+      }
+    });
+  });
+
+  document.querySelectorAll(".workspace-tool-btn").forEach((btn) => {
+    if (btn.dataset.bound === "true") return;
+    btn.dataset.bound = "true";
+    btn.addEventListener("click", () => runWorkspaceToolFromResult(btn));
+  });
+
+  document.querySelectorAll(".copy-generated-tool-btn").forEach((btn) => {
+    if (btn.dataset.bound === "true") return;
+    btn.dataset.bound = "true";
+    btn.addEventListener("click", async () => {
+      const content = btn.closest(".glass-card")?.querySelector(".generated-tool-content")?.textContent || "";
+      if (!content) return;
+      try {
+        await navigator.clipboard.writeText(content);
+        btn.textContent = "تم النسخ";
+        setTimeout(() => { btn.textContent = "نسخ"; }, 1500);
+      } catch (e) {
+        console.error("Copy generated tool error", e);
+      }
+    });
+  });
 }
 
 function setupConversationControls() {
@@ -1127,6 +1410,7 @@ function setupLegalAnalysis() {
       case_type: getSelectedCaseType(),
       selected_case_type: getSelectedCaseType(),
       assistant_mode: valueOf("assistant-mode-select", "case_analysis"),
+      audience_mode: valueOf("audience-mode-select", getAssistantPageConfig().userRole || "individual"),
       conversation_history: getConversationHistoryForApi(),
       case_id: valueOf("case-id-select", "") ? Number(valueOf("case-id-select", "")) : null,
       criminal_details: criminalDetails,
@@ -1161,6 +1445,7 @@ function setupLegalAnalysis() {
         formData.append("case_type", payload.case_type || "غير محدد");
         formData.append("selected_case_type", payload.selected_case_type || "غير محدد");
         formData.append("assistant_mode", payload.assistant_mode || "case_analysis");
+        formData.append("audience_mode", payload.audience_mode || "individual");
         formData.append("case_id", payload.case_id ? String(payload.case_id) : "");
         formData.append("conversation_history", JSON.stringify(payload.conversation_history || []));
         formData.append("criminal_details", JSON.stringify(criminalDetails || {}));

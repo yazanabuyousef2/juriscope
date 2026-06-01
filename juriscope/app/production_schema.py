@@ -621,6 +621,77 @@ def ensure_production_schema():
             """
         )
 
+
+        # =========================
+        # Analysis Feedback & History Support
+        # =========================
+        cur.execute("""ALTER TABLE analyses ADD COLUMN IF NOT EXISTS country_code TEXT DEFAULT ''""")
+        cur.execute("""ALTER TABLE analyses ADD COLUMN IF NOT EXISTS country_name TEXT DEFAULT ''""")
+        cur.execute("""ALTER TABLE analyses ADD COLUMN IF NOT EXISTS assistant_mode TEXT DEFAULT ''""")
+        cur.execute("""ALTER TABLE analyses ADD COLUMN IF NOT EXISTS plan_code TEXT DEFAULT 'free'""")
+        cur.execute("""ALTER TABLE analyses ADD COLUMN IF NOT EXISTS sources_json TEXT DEFAULT ''""")
+        cur.execute("""ALTER TABLE analyses ADD COLUMN IF NOT EXISTS model_used TEXT DEFAULT ''""")
+        cur.execute("""ALTER TABLE analyses ADD COLUMN IF NOT EXISTS confidence_level TEXT DEFAULT ''""")
+
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS analysis_feedback (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                analysis_id INTEGER REFERENCES analyses(id) ON DELETE CASCADE,
+                rating SMALLINT NOT NULL DEFAULT 0,
+                comment TEXT DEFAULT '',
+                assistant_mode TEXT DEFAULT '',
+                confidence_level TEXT DEFAULT '',
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS analysis_exports (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                analysis_id INTEGER REFERENCES analyses(id) ON DELETE SET NULL,
+                export_format TEXT NOT NULL DEFAULT 'copy',
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS case_messages (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                case_id INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+                question TEXT NOT NULL DEFAULT '',
+                answer_json TEXT NOT NULL DEFAULT '',
+                assistant_mode TEXT DEFAULT '',
+                confidence_level TEXT DEFAULT '',
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS case_documents (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                case_id INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+                filename TEXT NOT NULL DEFAULT '',
+                stored_path TEXT DEFAULT '',
+                content_type TEXT DEFAULT '',
+                analysis_json TEXT DEFAULT '',
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+
+        ensure_compatibility_columns(cur)
+
         # =========================
         # Indexes
         # =========================
@@ -637,6 +708,13 @@ def ensure_production_schema():
         cur.execute("CREATE INDEX IF NOT EXISTS idx_legal_articles_country_id ON legal_articles(country_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_legal_article_relations_article_id ON legal_article_relations(article_id)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_legal_article_relations_type ON legal_article_relations(relation_type)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_analysis_feedback_user_id ON analysis_feedback(user_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_analysis_feedback_analysis_id ON analysis_feedback(analysis_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_case_messages_user_id ON case_messages(user_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_case_messages_case_id ON case_messages(case_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_case_documents_user_id ON case_documents(user_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_case_documents_case_id ON case_documents(case_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_analyses_created_at ON analyses(created_at)")
 
         seed_defaults(cur)
 
@@ -650,6 +728,168 @@ def ensure_production_schema():
     finally:
         cur.close()
         conn.close()
+
+
+
+def _sql_literal(value):
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
+    if value is None:
+        return "NULL"
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def _column_exists(cur, table_name: str, column_name: str) -> bool:
+    cur.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = %s
+          AND column_name = %s
+        LIMIT 1
+        """,
+        (table_name, column_name),
+    )
+    return cur.fetchone() is not None
+
+
+def _ensure_column(cur, table_name: str, column_name: str, definition: str, default_value=None):
+    cur.execute(f'ALTER TABLE public."{table_name}" ADD COLUMN IF NOT EXISTS "{column_name}" {definition}')
+
+    if default_value is not None:
+        literal = _sql_literal(default_value)
+        cur.execute(f'UPDATE public."{table_name}" SET "{column_name}" = {literal} WHERE "{column_name}" IS NULL')
+        cur.execute(f'ALTER TABLE public."{table_name}" ALTER COLUMN "{column_name}" SET DEFAULT {literal}')
+
+
+def _set_safe_defaults_for_required_legacy_columns(cur, table_name: str):
+    """Keep legacy columns valid without weakening referential integrity.
+
+    Some existing deployments were created before the newer workspace/cases
+    schema.  CREATE TABLE IF NOT EXISTS cannot update them, so inserts can fail
+    on old NOT NULL columns that the current code no longer writes.  Instead of
+    dropping constraints or asking the developer to run manual scripts, we set
+    safe defaults for those legacy columns and backfill NULL values.
+    """
+    cur.execute(
+        """
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = %s
+          AND is_nullable = 'NO'
+          AND column_default IS NULL
+        """,
+        (table_name,),
+    )
+
+    for column_name, data_type in cur.fetchall():
+        if column_name == 'id':
+            continue
+
+        lower = column_name.lower()
+        if lower.endswith('_id') and lower not in {'case_id'}:
+            # Do not invent foreign keys. Actor-owned user_id is handled in code.
+            continue
+
+        if data_type == 'boolean':
+            default_sql = 'FALSE'
+        elif data_type in {'integer', 'bigint', 'smallint'}:
+            default_sql = '0'
+        elif 'timestamp' in data_type or data_type == 'date':
+            default_sql = 'NOW()'
+        else:
+            default_sql = "''"
+
+        cur.execute(f'UPDATE public."{table_name}" SET "{column_name}" = {default_sql} WHERE "{column_name}" IS NULL')
+        cur.execute(f'ALTER TABLE public."{table_name}" ALTER COLUMN "{column_name}" SET DEFAULT {default_sql}')
+
+
+def ensure_compatibility_columns(cur):
+    """Apply forward-only PostgreSQL compatibility migrations.
+
+    This function is intentionally part of startup schema validation. It turns
+    old local/Supabase databases into the schema expected by the current code
+    without manual one-off SQL files and without fake negative ids.
+    """
+    # Users: keep both old and current user/account columns available.
+    _ensure_column(cur, 'users', 'full_name', 'TEXT', 'Mizan User')
+    _ensure_column(cur, 'users', 'email', 'TEXT', '')
+    _ensure_column(cur, 'users', 'password_hash', 'TEXT', 'not-for-login')
+    _ensure_column(cur, 'users', 'plan', 'TEXT', 'free')
+    _ensure_column(cur, 'users', 'plan_code', 'TEXT', 'free')
+    _ensure_column(cur, 'users', 'country', 'TEXT', 'الأردن')
+    _ensure_column(cur, 'users', 'country_code', 'TEXT', 'JO')
+    _ensure_column(cur, 'users', 'country_name', 'TEXT', 'الأردن')
+    _ensure_column(cur, 'users', 'phone', 'TEXT', '')
+    _ensure_column(cur, 'users', 'phone_country_code', 'TEXT', '+962')
+    _ensure_column(cur, 'users', 'phone_verified', 'BOOLEAN', True)
+    _ensure_column(cur, 'users', 'user_role', 'TEXT', 'individual')
+    _ensure_column(cur, 'users', 'is_active', 'BOOLEAN', True)
+    _ensure_column(cur, 'users', 'marketing_consent', 'BOOLEAN', False)
+    _ensure_column(cur, 'users', 'created_at', 'TIMESTAMP', None)
+    _ensure_column(cur, 'users', 'updated_at', 'TIMESTAMP', None)
+    cur.execute("UPDATE public.users SET created_at = NOW() WHERE created_at IS NULL")
+    cur.execute("UPDATE public.users SET updated_at = NOW() WHERE updated_at IS NULL")
+    cur.execute("ALTER TABLE public.users ALTER COLUMN created_at SET DEFAULT NOW()")
+    cur.execute("ALTER TABLE public.users ALTER COLUMN updated_at SET DEFAULT NOW()")
+
+    # Cases: support old fields and current workspace fields together.
+    _ensure_column(cur, 'cases', 'country', 'TEXT', 'الأردن')
+    _ensure_column(cur, 'cases', 'country_code', 'TEXT', 'JO')
+    _ensure_column(cur, 'cases', 'country_name', 'TEXT', 'الأردن')
+    _ensure_column(cur, 'cases', 'case_type', 'TEXT', '')
+    _ensure_column(cur, 'cases', 'opponent_name', 'TEXT', '')
+    _ensure_column(cur, 'cases', 'court_name', 'TEXT', '')
+    _ensure_column(cur, 'cases', 'case_number', 'TEXT', '')
+    _ensure_column(cur, 'cases', 'status', 'TEXT', 'مفتوحة')
+    _ensure_column(cur, 'cases', 'summary', 'TEXT', '')
+    _ensure_column(cur, 'cases', 'sensitivity_level', 'TEXT', 'normal')
+    _ensure_column(cur, 'cases', 'staff_access_requires_reason', 'BOOLEAN', True)
+    _ensure_column(cur, 'cases', 'created_at', 'TIMESTAMP', None)
+    _ensure_column(cur, 'cases', 'updated_at', 'TIMESTAMP', None)
+    cur.execute("UPDATE public.cases SET created_at = NOW() WHERE created_at IS NULL")
+    cur.execute("UPDATE public.cases SET updated_at = NOW() WHERE updated_at IS NULL")
+    cur.execute("ALTER TABLE public.cases ALTER COLUMN created_at SET DEFAULT NOW()")
+    cur.execute("ALTER TABLE public.cases ALTER COLUMN updated_at SET DEFAULT NOW()")
+    _set_safe_defaults_for_required_legacy_columns(cur, 'cases')
+
+    # Analyses compatibility.
+    _ensure_column(cur, 'analyses', 'country', 'TEXT', '')
+    _ensure_column(cur, 'analyses', 'country_code', 'TEXT', '')
+    _ensure_column(cur, 'analyses', 'country_name', 'TEXT', '')
+    _ensure_column(cur, 'analyses', 'case_type', 'TEXT', '')
+    _ensure_column(cur, 'analyses', 'assistant_mode', 'TEXT', 'case_analysis')
+    _ensure_column(cur, 'analyses', 'plan', 'TEXT', 'free')
+    _ensure_column(cur, 'analyses', 'plan_code', 'TEXT', 'free')
+    _ensure_column(cur, 'analyses', 'user_role', 'TEXT', 'individual')
+    _ensure_column(cur, 'analyses', 'model_used', 'TEXT', '')
+    _ensure_column(cur, 'analyses', 'sources_json', 'TEXT', '')
+    _ensure_column(cur, 'analyses', 'confidence_level', 'TEXT', '')
+    _set_safe_defaults_for_required_legacy_columns(cur, 'analyses')
+
+    # Workspace output tables.
+    _ensure_column(cur, 'case_messages', 'assistant_mode', 'TEXT', '')
+    _ensure_column(cur, 'case_messages', 'confidence_level', 'TEXT', '')
+    _ensure_column(cur, 'case_messages', 'audience_mode', 'TEXT', '')
+    _ensure_column(cur, 'case_messages', 'created_at', 'TIMESTAMP', None)
+    cur.execute("UPDATE public.case_messages SET created_at = NOW() WHERE created_at IS NULL")
+    cur.execute("ALTER TABLE public.case_messages ALTER COLUMN created_at SET DEFAULT NOW()")
+    _set_safe_defaults_for_required_legacy_columns(cur, 'case_messages')
+
+    _ensure_column(cur, 'case_documents', 'filename', 'TEXT', '')
+    _ensure_column(cur, 'case_documents', 'title', 'TEXT', '')
+    _ensure_column(cur, 'case_documents', 'document_type', 'TEXT', '')
+    _ensure_column(cur, 'case_documents', 'status', 'TEXT', '')
+    _ensure_column(cur, 'case_documents', 'notes', 'TEXT', '')
+    _ensure_column(cur, 'case_documents', 'stored_path', 'TEXT', '')
+    _ensure_column(cur, 'case_documents', 'content_type', 'TEXT', '')
+    _ensure_column(cur, 'case_documents', 'analysis_json', 'TEXT', '')
+    _ensure_column(cur, 'case_documents', 'created_at', 'TIMESTAMP', None)
+    cur.execute("UPDATE public.case_documents SET created_at = NOW() WHERE created_at IS NULL")
+    cur.execute("ALTER TABLE public.case_documents ALTER COLUMN created_at SET DEFAULT NOW()")
+    _set_safe_defaults_for_required_legacy_columns(cur, 'case_documents')
 
 
 def seed_defaults(cur):

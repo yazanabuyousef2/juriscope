@@ -8,6 +8,17 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from app.services.persona_engine import (
+    SUPPORTED_PERSONAS,
+    build_persona_instruction,
+    build_role_response_requirements,
+    get_persona_cards,
+    get_persona_disclaimer,
+    get_persona_label,
+    get_persona_tools,
+    normalize_persona,
+)
+
 
 load_dotenv()
 
@@ -42,15 +53,7 @@ ASSISTANT_MODES = [
     "corporate_advisory",
 ]
 
-AUDIENCE_MODES = [
-    "legal_professional",
-    "lawyer",
-    "company",
-    "judge",
-    "law_student",
-    "legal_researcher",
-    "government_employee",
-]
+AUDIENCE_MODES = SUPPORTED_PERSONAS
 
 VALID_CASE_TYPES = [
     "غير محدد",
@@ -116,6 +119,7 @@ ALL_CARDS = [
     "confidence",
     "disclaimer",
     "legal_sources",
+    "professional_tools",
 ]
 
 DEFAULT_DISCLAIMER = (
@@ -185,16 +189,9 @@ def _normalize_request_type(value: Any) -> str:
 
 
 def _normalize_audience_mode(value: Any, user_role: str) -> str:
-    value = str(value or "").strip()
-    if value == "individual":
-        value = "legal_professional"
-    if value in AUDIENCE_MODES:
-        return value
-    if user_role == "individual":
-        return "legal_professional"
-    if user_role in AUDIENCE_MODES:
-        return user_role
-    return "legal_professional"
+    """Normalize audience/persona without upgrading individuals into legal professionals."""
+    fallback = normalize_persona(user_role, fallback="individual")
+    return normalize_persona(value, fallback=fallback)
 
 
 def _normalize_assistant_mode(value: Any) -> str:
@@ -232,66 +229,70 @@ def _clean_card_list(cards: Any, request_type: str, user_role: str) -> List[str]
 
 
 def get_default_cards_for_request(request_type: str, user_role: str) -> List[str]:
-    # Professional legal workbench: always favor structured legal work product over simple chat.
-    base = [
-        "case_type_correction",
-        "professional_summary",
-        "facts_assumptions",
-        "legal_issues",
-        "governing_law",
-        "verified_legal_materials",
-        "source_based_analysis",
-        "application_to_facts",
-        "strengths",
-        "weaknesses",
-        "opposing_arguments",
-        "strategic_recommendations",
-        "missing_information",
-        "final_recommendation",
-        "confidence",
-        "legal_sources",
-        "disclaimer",
-    ]
+    persona_cards = get_persona_cards(user_role)
 
-    if request_type == "legal_research":
-        return [
+    by_request = {
+        "legal_research": [
             "case_type_correction", "professional_summary", "legal_issues", "governing_law",
             "verified_legal_materials", "source_based_analysis", "source_limitations",
-            "confidence", "legal_sources", "disclaimer"
-        ]
-
-    if request_type == "contract_review":
-        return [
+            "source_reasoning", "confidence", "legal_sources", "disclaimer",
+        ],
+        "legal_article_request": [
+            "case_type_correction", "articles_requested", "governing_law", "verified_legal_materials",
+            "source_based_analysis", "source_reasoning", "confidence", "legal_sources", "disclaimer",
+        ],
+        "legislation_request": [
+            "case_type_correction", "legislation_summary", "mizan_sources_summary", "verified_legal_materials",
+            "source_limitations", "source_reasoning", "confidence", "legal_sources", "disclaimer",
+        ],
+        "contract_review": [
             "case_type_correction", "professional_summary", "facts_assumptions", "legal_issues",
             "governing_law", "source_based_analysis", "key_risks", "business_risks",
-            "weaknesses", "strategic_recommendations", "drafting_notes", "missing_information",
-            "confidence", "legal_sources", "disclaimer"
-        ]
-
-    if request_type == "legal_drafting":
-        return [
+            "risk_matrix", "weaknesses", "strategic_recommendations", "drafting_notes",
+            "missing_information", "professional_tools", "action_checklist",
+            "confidence", "legal_sources", "disclaimer",
+        ],
+        "legal_drafting": [
             "case_type_correction", "professional_summary", "facts_assumptions", "legal_issues",
             "governing_law", "drafting_notes", "source_based_analysis", "missing_information",
-            "final_recommendation", "confidence", "legal_sources", "disclaimer"
-        ]
-
-    if request_type == "litigation_strategy":
-        return [
+            "final_recommendation", "professional_tools", "action_checklist",
+            "confidence", "legal_sources", "disclaimer",
+        ],
+        "litigation_strategy": [
             "case_type_correction", "professional_summary", "facts_assumptions", "legal_issues",
             "governing_law", "application_to_facts", "strengths", "weaknesses",
-            "opposing_arguments", "proof_points", "strategic_recommendations", "relevant_documents",
-            "missing_information", "confidence", "legal_sources", "disclaimer"
-        ]
+            "opposing_arguments", "defenses_or_arguments", "proof_points", "litigation_timeline",
+            "strategic_recommendations", "relevant_documents", "missing_information",
+            "professional_tools", "action_checklist", "confidence", "legal_sources", "disclaimer",
+        ],
+        "document_analysis": [
+            "case_type_correction", "professional_summary", "facts_assumptions", "document_intelligence",
+            "legal_issues", "governing_law", "source_based_analysis", "application_to_facts",
+            "key_risks", "relevant_documents", "missing_information", "strategic_recommendations",
+            "professional_tools", "action_checklist", "confidence", "legal_sources", "disclaimer",
+        ],
+        "lawyer_brief": [
+            "case_type_correction", "professional_summary", "case_understanding", "legal_classification",
+            "governing_law", "source_based_analysis", "proof_points", "defenses_or_arguments",
+            "key_risks", "lawyer_summary", "professional_tools", "action_checklist",
+            "confidence", "legal_sources", "disclaimer",
+        ],
+        "corporate_advisory": [
+            "case_type_correction", "professional_summary", "legal_issues", "governing_law",
+            "key_risks", "business_risks", "risk_matrix", "strategic_recommendations",
+            "final_recommendation", "professional_tools", "action_checklist",
+            "confidence", "legal_sources", "disclaimer",
+        ],
+    }
 
-    if request_type == "document_analysis":
-        return [
-            "case_type_correction", "professional_summary", "facts_assumptions", "legal_issues",
-            "governing_law", "source_based_analysis", "application_to_facts", "key_risks",
-            "relevant_documents", "missing_information", "strategic_recommendations",
-            "confidence", "legal_sources", "disclaimer"
-        ]
-
-    return base
+    merged: List[str] = []
+    for card in by_request.get(request_type, persona_cards):
+        if card not in merged:
+            merged.append(card)
+    for card in persona_cards:
+        if card not in merged:
+            merged.append(card)
+    return merged
 
 def _normalize_legal_result(data: Dict[str, Any], user_role: str, selected_case_type: str) -> Dict[str, Any]:
     criminal = data.get("criminal_penalty_estimate") or {}
@@ -316,6 +317,13 @@ def _normalize_legal_result(data: Dict[str, Any], user_role: str, selected_case_
         "assistant_mode": _normalize_assistant_mode(data.get("assistant_mode") or request_type),
         "audience_mode": audience_mode,
         "cards_to_show": _clean_card_list(data.get("cards_to_show"), request_type, audience_mode),
+        "persona_label": get_persona_label(audience_mode),
+        "professional_tools": _ensure_list(data.get("professional_tools")) or get_persona_tools(audience_mode),
+        "action_checklist": _ensure_list(data.get("action_checklist")),
+        "source_reasoning": data.get("source_reasoning", ""),
+        "risk_matrix": _ensure_list(data.get("risk_matrix")),
+        "litigation_timeline": _ensure_list(data.get("litigation_timeline")),
+        "document_intelligence": _ensure_list(data.get("document_intelligence")),
         "selected_case_type": selected,
         "detected_case_type": detected,
         "case_type_match": case_type_match,
@@ -366,7 +374,7 @@ def _normalize_legal_result(data: Dict[str, Any], user_role: str, selected_case_
         "role_based_guidance": data.get("role_based_guidance", ""),
         "plan_based_depth": data.get("plan_based_depth", ""),
         "combined_role_plan_note": data.get("combined_role_plan_note", ""),
-        "disclaimer": data.get("disclaimer", DEFAULT_DISCLAIMER),
+        "disclaimer": data.get("disclaimer") or get_persona_disclaimer(audience_mode),
         "criminal_penalty_estimate": {
             "show": bool(criminal.get("show", False)),
             "alleged_crime": criminal.get("alleged_crime", ""),
@@ -386,6 +394,13 @@ def _normalize_document_result(data: Dict[str, Any], selected_case_type: str, us
         "request_type": "document_analysis",
         "audience_mode": _normalize_audience_mode(data.get("audience_mode"), user_role),
         "cards_to_show": _clean_card_list(data.get("cards_to_show"), "document_analysis", user_role),
+        "persona_label": get_persona_label(user_role),
+        "professional_tools": _ensure_list(data.get("professional_tools")) or get_persona_tools(user_role),
+        "action_checklist": _ensure_list(data.get("action_checklist")),
+        "source_reasoning": data.get("source_reasoning", ""),
+        "risk_matrix": _ensure_list(data.get("risk_matrix")),
+        "litigation_timeline": _ensure_list(data.get("litigation_timeline")),
+        "document_intelligence": _ensure_list(data.get("document_intelligence")),
         "selected_case_type": selected,
         "detected_case_type": detected,
         "case_type_match": match,
@@ -405,7 +420,7 @@ def _normalize_document_result(data: Dict[str, Any], selected_case_type: str, us
         "unverified_legal_points": _ensure_list(data.get("unverified_legal_points")),
         "risk_level": data.get("risk_level", ""),
         "lawyer_summary": data.get("lawyer_summary", ""),
-        "disclaimer": data.get("disclaimer", DEFAULT_DISCLAIMER),
+        "disclaimer": data.get("disclaimer") or get_persona_disclaimer(audience_mode),
     }
 
 
@@ -418,17 +433,8 @@ def get_country_legal_style(country: str) -> str:
 
 
 def get_role_instruction(user_role: str, country: str) -> str:
-    normalized = "legal_professional" if user_role == "individual" else (user_role or "legal_professional")
-    roles = {
-        "legal_professional": f"نوع المستخدم: مهني قانوني. اكتب كأنك محامٍ خبير في {country}: تحلل الوقائع، تربطها بالنصوص، تذكر المخاطر والدفوع، ولا تقدم جوابًا عامًا أو سطحيًا.",
-        "lawyer": f"نوع المستخدم: محامٍ. استخدم أسلوبًا قانونيًا احترافيًا عميقًا ضمن البيئة القانونية في {country}، وركز على التكييف والدفوع والإثبات والاستراتيجية.",
-        "company": "نوع المستخدم: شركة / دائرة قانونية. ركز على المخاطر القانونية والتعاقدية والمالية والامتثال والبدائل العملية.",
-        "judge": "نوع المستخدم: قاضٍ أو باحث قضائي. استخدم أسلوبًا محايدًا ومتوازنًا ولا تصدر حكمًا نهائيًا دون وقائع كاملة.",
-        "law_student": "نوع المستخدم: طالب أو متدرب قانوني. اجعل الجواب تعليميًا ومنظمًا مع قاعدة وتطبيق، لكن بنفس معيار الدقة المهنية.",
-        "legal_researcher": "نوع المستخدم: باحث قانوني. استخدم أسلوبًا تحليليًا ومنظمًا مع تمييز النصوص المؤكدة عن الاستنتاجات.",
-        "government_employee": "نوع المستخدم: موظف حكومي. ركز على الاختصاص والإجراءات وحدود الصلاحية والامتثال للتشريعات.",
-    }
-    return roles.get(normalized, roles["legal_professional"])
+    return build_persona_instruction(user_role, country)
+
 
 def get_plan_instruction(plan: str) -> str:
     if plan in ["enterprise", "premium", "staff_unlimited"]:
@@ -646,6 +652,9 @@ async def analyze_legal_question(
 تعليمات نوع المستخدم:
 {get_role_instruction(user_role, country)}
 
+متطلبات مخرج نوع المستخدم:
+{build_role_response_requirements(user_role)}
+
 تعليمات الباقة:
 {get_plan_instruction(plan)}
 
@@ -688,7 +697,7 @@ async def analyze_legal_question(
 {{
   "request_type": "general_question | case_analysis | legal_research | legal_article_request | legislation_request | procedure_guidance | lawyer_brief | document_analysis | contract_review | legal_drafting | litigation_strategy | corporate_advisory",
   "assistant_mode": "{assistant_mode}",
-  "audience_mode": "legal_professional",
+  "audience_mode": "{normalize_persona(user_role)}",
   "cards_to_show": ["short_answer"],
   "selected_case_type": "{selected_case_type}",
   "detected_case_type": "غير محدد | مدني | جنائي | تجاري | عمالي | أحوال شخصية | إداري | عقاري | تنفيذ | عقود | شركات | إيجارات | شيكات ومطالبات مالية | ملكية فكرية | أخرى",
@@ -732,6 +741,12 @@ async def analyze_legal_question(
   "proof_points": [],
   "defenses_or_arguments": [],
   "similar_cases": [],
+  "professional_tools": [],
+  "action_checklist": [],
+  "source_reasoning": "",
+  "risk_matrix": [],
+  "litigation_timeline": [],
+  "document_intelligence": [],
   "criminal_penalty_estimate": {{"show": false, "alleged_crime": "", "possible_penalty_range": "", "factors_that_may_increase_penalty": [], "factors_that_may_reduce_penalty": [], "important_warning": ""}},
   "next_steps": [],
   "procedure_steps": [],
@@ -861,6 +876,9 @@ async def analyze_legal_question_with_documents(
 تعليمات نوع المستخدم:
 {get_role_instruction(user_role, country)}
 
+متطلبات مخرج نوع المستخدم:
+{build_role_response_requirements(user_role)}
+
 تعليمات الباقة:
 {get_plan_instruction(plan)}
 
@@ -904,8 +922,8 @@ async def analyze_legal_question_with_documents(
 {{
   "request_type": "case_analysis | lawyer_brief | procedure_guidance | general_question | document_analysis | contract_review | legal_drafting | litigation_strategy",
   "assistant_mode": "{assistant_mode}",
-  "audience_mode": "legal_professional",
-  "cards_to_show": ["case_type_correction", "short_answer", "case_understanding", "legal_classification", "proof_points", "key_risks", "relevant_documents", "next_steps", "verified_legal_materials", "legal_sources", "disclaimer"],
+  "audience_mode": "{normalize_persona(user_role)}",
+  "cards_to_show": ["case_type_correction", "short_answer", "case_understanding", "legal_classification", "proof_points", "key_risks", "relevant_documents", "next_steps", "verified_legal_materials", "professional_tools", "legal_sources", "disclaimer"],
   "selected_case_type": "{selected_case_type}",
   "detected_case_type": "غير محدد | مدني | جنائي | تجاري | عمالي | أحوال شخصية | إداري | عقاري | تنفيذ | عقود | شركات | إيجارات | شيكات ومطالبات مالية | ملكية فكرية | أخرى",
   "case_type_match": true,
@@ -948,6 +966,12 @@ async def analyze_legal_question_with_documents(
   "proof_points": [],
   "defenses_or_arguments": [],
   "similar_cases": [],
+  "professional_tools": [],
+  "action_checklist": [],
+  "source_reasoning": "",
+  "risk_matrix": [],
+  "litigation_timeline": [],
+  "document_intelligence": [],
   "criminal_penalty_estimate": {{"show": false, "alleged_crime": "", "possible_penalty_range": "", "factors_that_may_increase_penalty": [], "factors_that_may_reduce_penalty": [], "important_warning": ""}},
   "next_steps": [],
   "procedure_steps": [],
@@ -1049,6 +1073,12 @@ async def analyze_legal_documents(
 {get_case_type_instruction()}
 {get_accuracy_rules()}
 
+تعليمات نوع المستخدم:
+{get_role_instruction(user_role, country)}
+
+متطلبات مخرج نوع المستخدم:
+{build_role_response_requirements(user_role)}
+
 حلل جميع المستندات المرفقة معًا وليس كل ملف بمعزل عن الآخر.
 استخرج الروابط بين الملفات، الأطراف، الوقائع، الالتزامات، المخاطر، التناقضات، والمستندات الناقصة.
 إذا سأل المستخدم سؤالًا محددًا، أجب عنه بناءً على الملفات.
@@ -1077,8 +1107,14 @@ async def analyze_legal_documents(
   "verified_legal_materials": [],
   "unverified_legal_points": [],
   "risk_level": "منخفض أو متوسط أو مرتفع",
+  "professional_tools": [],
+  "action_checklist": [],
+  "source_reasoning": "",
+  "risk_matrix": [],
+  "litigation_timeline": [],
+  "document_intelligence": [],
   "lawyer_summary": "",
-  "disclaimer": "{DEFAULT_DISCLAIMER}"
+  "disclaimer": "{get_persona_disclaimer(user_role)}"
 }}
 """
 
@@ -1127,6 +1163,12 @@ async def analyze_legal_document(
 {get_case_type_instruction()}
 {get_accuracy_rules()}
 
+تعليمات نوع المستخدم:
+{get_role_instruction(user_role, country)}
+
+متطلبات مخرج نوع المستخدم:
+{build_role_response_requirements(user_role)}
+
 حلل المستند المرفق. إذا لم يكن واضحًا صرّح بذلك. أرجع JSON فقط:
 {{
   "request_type": "document_analysis",
@@ -1150,8 +1192,14 @@ async def analyze_legal_document(
   "verified_legal_materials": [],
   "unverified_legal_points": [],
   "risk_level": "منخفض أو متوسط أو مرتفع",
+  "professional_tools": [],
+  "action_checklist": [],
+  "source_reasoning": "",
+  "risk_matrix": [],
+  "litigation_timeline": [],
+  "document_intelligence": [],
   "lawyer_summary": "",
-  "disclaimer": "{DEFAULT_DISCLAIMER}"
+  "disclaimer": "{get_persona_disclaimer(user_role)}"
 }}
 """
     file_part = types.Part.from_bytes(data=file_bytes, mime_type=content_type or "application/octet-stream")
