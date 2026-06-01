@@ -1,7 +1,9 @@
+.env
+.env.*
+!.env.example
 venv/
+.venv/
 __pycache__/
 *.pyc
-.env
-data/*.db
-data/uploads/
-.venv/
+data/
+*.db
