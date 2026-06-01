@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import time
@@ -27,6 +28,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.0-flash")
 
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+logger = logging.getLogger("mizan.ai")
 
 REQUEST_TYPES = [
     "general_question",
@@ -128,32 +130,83 @@ DEFAULT_DISCLAIMER = (
 )
 
 
+def _summarize_provider_error(error: Exception) -> str:
+    """Return a safe, compact provider error summary for logs and diagnostics."""
+    error_text = str(error or "").strip()
+    error_text = re.sub(r"AIza[0-9A-Za-z_\-]+", "AIza***", error_text)
+    if len(error_text) > 1200:
+        error_text = error_text[:1200] + "..."
+    return f"{error.__class__.__name__}: {error_text}"
+
+
+def _is_retryable_provider_error(error: Exception) -> bool:
+    error_text = str(error or "").lower()
+    retryable_terms = [
+        "503",
+        "500",
+        "unavailable",
+        "overloaded",
+        "temporarily",
+        "timeout",
+        "deadline",
+        "rate",
+        "quota",
+        "resource exhausted",
+    ]
+    return any(term in error_text for term in retryable_terms)
+
+
 def generate_content_with_retry(contents, config, retries: int = 2):
     if not client:
-        raise RuntimeError("GEMINI_API_KEY غير موجود. أضفه في Environment Variables على Render أو في ملف .env محليًا.")
+        logger.error("AI_PROVIDER_CONFIG_ERROR: GEMINI_API_KEY is missing on this environment.")
+        raise RuntimeError("GEMINI_API_KEY غير موجود على الخادم. تحقق من Environment Variables على Render.")
 
-    models_to_try = [GEMINI_MODEL]
-    if GEMINI_FALLBACK_MODEL and GEMINI_FALLBACK_MODEL != GEMINI_MODEL:
-        models_to_try.append(GEMINI_FALLBACK_MODEL)
+    models_to_try = []
+    for model_name in [GEMINI_MODEL, GEMINI_FALLBACK_MODEL, "gemini-2.5-flash-lite", "gemini-2.0-flash"]:
+        model_name = (model_name or "").strip()
+        if model_name and model_name not in models_to_try:
+            models_to_try.append(model_name)
 
-    last_error = None
+    last_error: Exception | None = None
+    attempted_models: list[str] = []
+
     for model_name in models_to_try:
+        attempted_models.append(model_name)
         for attempt in range(retries + 1):
             try:
-                return client.models.generate_content(
+                logger.info("AI_PROVIDER_ATTEMPT model=%s attempt=%s", model_name, attempt + 1)
+                response = client.models.generate_content(
                     model=model_name,
                     contents=contents,
                     config=config,
                 )
+                logger.info("AI_PROVIDER_SUCCESS model=%s attempt=%s", model_name, attempt + 1)
+                return response
             except Exception as e:
                 last_error = e
-                error_text = str(e)
-                retryable = any(term in error_text.lower() for term in ["503", "unavailable", "overloaded", "temporarily", "rate"])
-                if not retryable:
-                    raise
-                time.sleep(1.5 * (attempt + 1))
+                safe_error = _summarize_provider_error(e)
+                logger.error(
+                    "AI_PROVIDER_ERROR model=%s attempt=%s retryable=%s error=%s",
+                    model_name,
+                    attempt + 1,
+                    _is_retryable_provider_error(e),
+                    safe_error,
+                )
+                if not _is_retryable_provider_error(e):
+                    raise RuntimeError(f"فشل الاتصال بمزود الذكاء الاصطناعي: {safe_error}") from e
+                if attempt < retries:
+                    time.sleep(min(8, 1.5 * (attempt + 1)))
 
-    raise RuntimeError("مزود الذكاء الاصطناعي مشغول حاليًا. يرجى إعادة المحاولة بعد قليل.") from last_error
+    last_summary = _summarize_provider_error(last_error) if last_error else "Unknown provider error"
+    logger.error(
+        "AI_PROVIDER_ALL_MODELS_FAILED attempted_models=%s last_error=%s",
+        attempted_models,
+        last_summary,
+    )
+    raise RuntimeError(
+        "مزود الذكاء الاصطناعي لم يستجب بعد تجربة النماذج الاحتياطية. "
+        f"آخر خطأ: {last_summary}"
+    ) from last_error
 
 
 def _safe_json_loads(text: str) -> Dict[str, Any]:

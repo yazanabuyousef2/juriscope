@@ -1,5 +1,7 @@
 import json
+import logging
 import re
+import traceback
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -11,6 +13,7 @@ from app.auth.dependencies import require_user, is_staff_mode_user, is_unlimited
 from app.database import UPLOAD_DIR, can_analyze, can_upload_document, execute, fetch_one, fetch_all, now_iso
 from app.db.session import SessionLocal
 from app.services.ai_service import (
+    generate_content_with_retry,
     analyze_legal_document,
     analyze_legal_documents,
     analyze_legal_question,
@@ -28,6 +31,7 @@ from app.services.workspace_tools import (
 )
 
 router = APIRouter()
+logger = logging.getLogger("mizan.api")
 
 
 
@@ -383,6 +387,30 @@ def _save_analysis_record(
     return None
 
 
+
+
+@router.get("/ai-health")
+async def ai_health():
+    """Small production-safe diagnostic endpoint for Render/Gemini provider status."""
+    from google.genai import types
+
+    try:
+        response = generate_content_with_retry(
+            contents="أجب بكلمة OK فقط.",
+            config=types.GenerateContentConfig(
+                temperature=0,
+                max_output_tokens=16,
+            ),
+            retries=0,
+        )
+        text = getattr(response, "text", "") or ""
+        return {"ok": True, "provider": "gemini", "sample": text[:80]}
+    except Exception as exc:
+        logger.error("AI_HEALTH_ERROR %s", repr(exc))
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.post("/analyze")
 async def analyze(request: Request, payload: LegalQuestionRequest):
     user = require_user(request)
@@ -471,6 +499,8 @@ async def analyze(request: Request, payload: LegalQuestionRequest):
     except HTTPException:
         raise
     except Exception as exc:
+        logger.error("ANALYZE_ROUTE_ERROR %s", repr(exc))
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -583,6 +613,8 @@ async def analyze_with_documents(request: Request):
     except HTTPException:
         raise
     except Exception as exc:
+        logger.error("API_ROUTE_ERROR %s", repr(exc))
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -671,6 +703,8 @@ async def analyze_document(request: Request):
     except HTTPException:
         raise
     except Exception as exc:
+        logger.error("API_ROUTE_ERROR %s", repr(exc))
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -754,6 +788,8 @@ async def run_workspace_tool(request: Request, payload: WorkspaceToolRequest):
     except HTTPException:
         raise
     except Exception as exc:
+        logger.error("API_ROUTE_ERROR %s", repr(exc))
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(exc))
 
 
