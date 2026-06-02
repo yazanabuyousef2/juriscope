@@ -271,22 +271,213 @@ def _extract_gemini_text(response: Any) -> str:
     return ""
 
 
-def _safe_json_loads(text: str) -> Dict[str, Any]:
-    if not text:
-        raise ValueError("لم يصل رد من مزود الذكاء الاصطناعي.")
+def _strip_json_code_fences(text: str) -> str:
+    cleaned = (text or "").strip().lstrip("\ufeff")
+    cleaned = re.sub(r"^```(?:json|javascript|js)?\s*", "", cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r"\s*```$", "", cleaned).strip()
+    return cleaned
 
-    cleaned = text.strip()
-    cleaned = re.sub(r"^```(?:json)?", "", cleaned, flags=re.IGNORECASE).strip()
-    cleaned = re.sub(r"```$", "", cleaned).strip()
+
+def _extract_json_object_text(text: str) -> str:
+    """Extract the first balanced JSON object from noisy model output.
+
+    We do not simply cut from first "{" to last "}" because Gemini can include
+    explanatory braces or partial examples. This scanner respects strings and
+    escaped quotes, which makes extraction safer for Arabic legal text.
+    """
+    cleaned = _strip_json_code_fences(text)
+    if not cleaned:
+        return ""
 
     start = cleaned.find("{")
+    if start < 0:
+        return cleaned
+
+    depth = 0
+    in_string = False
+    escape = False
+
+    for index in range(start, len(cleaned)):
+        char = cleaned[index]
+
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return cleaned[start : index + 1].strip()
+
+    # Fallback to the old broad extraction when the JSON is not balanced.
     end = cleaned.rfind("}") + 1
-    if start >= 0 and end > start:
-        cleaned = cleaned[start:end]
+    if end > start:
+        return cleaned[start:end].strip()
+    return cleaned[start:].strip()
+
+
+def _basic_json_cleanup(text: str) -> str:
+    """Apply safe cleanups only; do not invent legal content."""
+    cleaned = _extract_json_object_text(text)
+    cleaned = cleaned.replace("\u2028", "\\n").replace("\u2029", "\\n")
+    # Remove trailing commas before object/array endings.
+    cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
+    # Normalize Arabic semicolon mistakenly used as a delimiter between fields.
+    cleaned = re.sub(r'"\s*[؛;]\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*:', r'", "\1":', cleaned)
+    return cleaned.strip()
+
+
+def _minimal_legal_fallback_from_text(text: str, error_message: str = "") -> Dict[str, Any]:
+    """Return a safe structured fallback instead of breaking the UI.
+
+    This is used only when Gemini produced useful text but not valid JSON. The
+    user should receive a cautious answer instead of a 500 error. We keep the
+    raw text as a short_answer/professional_summary and mark confidence low.
+    """
+    visible_text = _strip_json_code_fences(text)
+    visible_text = re.sub(r"\s+", " ", visible_text).strip()
+    if len(visible_text) > 4500:
+        visible_text = visible_text[:4500].rstrip() + "..."
+
+    if not visible_text:
+        visible_text = (
+            "تعذر تنظيم رد مزود الذكاء الاصطناعي بصيغة قابلة للعرض. "
+            "يرجى إعادة المحاولة أو تبسيط السؤال."
+        )
+
+    warning = (
+        "تم عرض هذا الرد كنسخة احتياطية لأن مزود الذكاء الاصطناعي أعاد JSON غير صالح. "
+        "يجب مراجعة المخرج قبل الاعتماد عليه."
+    )
+    if error_message:
+        logger.error("AI_JSON_FALLBACK_USED parse_error=%s raw_preview=%s", error_message, visible_text[:1000])
+    else:
+        logger.error("AI_JSON_FALLBACK_USED raw_preview=%s", visible_text[:1000])
+
+    return {
+        "request_type": "general_question",
+        "assistant_mode": "case_analysis",
+        "audience_mode": "individual",
+        "cards_to_show": [
+            "short_answer",
+            "professional_summary",
+            "legal_accuracy_note",
+            "confidence",
+            "disclaimer",
+        ],
+        "selected_case_type": "غير محدد",
+        "detected_case_type": "غير محدد",
+        "case_type_match": True,
+        "case_type_correction_note": "",
+        "short_answer": visible_text,
+        "professional_summary": visible_text,
+        "plain_explanation": visible_text,
+        "legal_accuracy_note": warning,
+        "confidence_level": "منخفض",
+        "confidence_reason": warning,
+        "source_dependency_level": "منخفض",
+        "source_limitations": [warning],
+        "missing_information": [],
+        "next_steps": ["إعادة طرح السؤال بصيغة أوضح", "مراجعة الرد مع مختص قبل اتخاذ إجراء"],
+        "professional_tools": [],
+        "action_checklist": [],
+        "verified_legal_materials": [],
+        "unverified_legal_points": [warning],
+        "legal_sources": [],
+        "disclaimer": DEFAULT_DISCLAIMER,
+    }
+
+
+def _repair_json_with_gemini(malformed_json: str, parse_error: Exception) -> Optional[Dict[str, Any]]:
+    """Ask the provider to repair syntax only when JSON parsing fails.
+
+    The repair prompt is intentionally narrow: it must not add, remove, or
+    improve legal content. It only fixes commas, quotes, arrays, braces, and
+    invalid escaping. If provider repair also fails, the caller will use a safe
+    fallback instead of raising a 500.
+    """
+    if not malformed_json or not client:
+        return None
+
+    repair_prompt = f"""
+أنت مصحح JSON فقط. أصلح النص التالي ليصبح JSON صالحًا قابلًا للقراءة بـ json.loads في Python.
+
+قواعد صارمة:
+- لا تضف أي معلومة قانونية جديدة.
+- لا تحذف أي معنى من المحتوى.
+- لا تكتب Markdown.
+- لا تشرح.
+- أعد JSON فقط.
+- أصلح فقط: الفواصل، علامات الاقتباس، الأقواس، escaping، trailing commas، والقيم الناقصة إن وجدت.
+
+خطأ القراءة:
+{str(parse_error)}
+
+النص غير الصالح:
+{malformed_json[:12000]}
+""".strip()
 
     try:
-        return json.loads(cleaned, strict=False)
+        response = generate_content_with_retry(
+            contents=repair_prompt,
+            config=types.GenerateContentConfig(temperature=0, response_mime_type="application/json"),
+            retries=1,
+        )
+        repaired_text = _extract_gemini_text(response)
+        repaired_cleaned = _basic_json_cleanup(repaired_text)
+        parsed = json.loads(repaired_cleaned, strict=False)
+        if isinstance(parsed, dict):
+            logger.info("AI_JSON_REPAIR_SUCCESS")
+            return parsed
+        logger.error("AI_JSON_REPAIR_NON_OBJECT type=%s", type(parsed).__name__)
+        return None
+    except Exception as repair_error:
+        logger.error(
+            "AI_JSON_REPAIR_FAILED original_error=%s repair_error=%s",
+            str(parse_error)[:500],
+            _summarize_provider_error(repair_error) if isinstance(repair_error, Exception) else str(repair_error),
+        )
+        return None
+
+
+def _safe_json_loads(text: str, *, allow_repair: bool = True, fallback_on_error: bool = True) -> Dict[str, Any]:
+    if not text:
+        if fallback_on_error:
+            return _minimal_legal_fallback_from_text("", "empty provider response")
+        raise ValueError("لم يصل رد من مزود الذكاء الاصطناعي.")
+
+    cleaned = _basic_json_cleanup(text)
+
+    try:
+        parsed = json.loads(cleaned, strict=False)
+        if isinstance(parsed, dict):
+            return parsed
+        if fallback_on_error:
+            return _minimal_legal_fallback_from_text(text, f"JSON root is {type(parsed).__name__}")
+        raise ValueError("رد Gemini ليس JSON object صالحًا.")
     except json.JSONDecodeError as e:
+        logger.error(
+            "AI_JSON_PARSE_FAILED error=%s line=%s col=%s preview=%s",
+            e.msg,
+            e.lineno,
+            e.colno,
+            cleaned[:1500],
+        )
+        if allow_repair:
+            repaired = _repair_json_with_gemini(cleaned, e)
+            if repaired is not None:
+                return repaired
+        if fallback_on_error:
+            return _minimal_legal_fallback_from_text(text, str(e))
         raise ValueError(f"لم يتمكن النظام من قراءة رد Gemini كـ JSON صالح: {str(e)}")
 
 

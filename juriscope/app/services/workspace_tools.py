@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from google.genai import types
 
-from app.services.ai_service import generate_content_with_retry, _safe_json_loads
+from app.services.ai_service import generate_content_with_retry, _safe_json_loads, _extract_gemini_text
 from app.services.persona_engine import get_persona_label, get_persona_tools, normalize_persona
 
 
@@ -305,7 +305,7 @@ async def generate_workspace_tool_output(
         contents=prompt,
         config=types.GenerateContentConfig(temperature=0.15, response_mime_type="application/json"),
     )
-    data = _safe_json_loads(response.text or "")
+    data = _safe_json_loads(_extract_gemini_text(response))
 
     return {
         "tool_key": selected_key,
