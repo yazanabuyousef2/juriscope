@@ -209,6 +209,68 @@ def generate_content_with_retry(contents, config, retries: int = 2):
     ) from last_error
 
 
+def _extract_gemini_text(response: Any) -> str:
+    """Extract text from google-genai responses across SDK/provider shapes.
+
+    On Render, some responses can return successfully while ``response.text`` is
+    empty. The actual text may still be present inside candidates/content/parts.
+    Keeping extraction here prevents /api/analyze from failing after a successful
+    provider call.
+    """
+    if response is None:
+        return ""
+
+    # Official convenience property when available.
+    try:
+        text = getattr(response, "text", None)
+        if isinstance(text, str) and text.strip():
+            return text.strip()
+    except Exception:
+        pass
+
+    # Candidate/part fallback used by google-genai objects.
+    try:
+        candidates = getattr(response, "candidates", None) or []
+        parts_text: list[str] = []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) if content is not None else None
+            for part in parts or []:
+                part_text = getattr(part, "text", None)
+                if isinstance(part_text, str) and part_text.strip():
+                    parts_text.append(part_text.strip())
+        if parts_text:
+            return "\n".join(parts_text).strip()
+    except Exception:
+        pass
+
+    # Dict-style fallback for any serialized provider response.
+    try:
+        if isinstance(response, dict):
+            direct = response.get("text")
+            if isinstance(direct, str) and direct.strip():
+                return direct.strip()
+            parts_text = []
+            for candidate in response.get("candidates", []) or []:
+                content = candidate.get("content", {}) if isinstance(candidate, dict) else {}
+                for part in content.get("parts", []) or []:
+                    if isinstance(part, dict):
+                        part_text = part.get("text")
+                        if isinstance(part_text, str) and part_text.strip():
+                            parts_text.append(part_text.strip())
+            if parts_text:
+                return "\n".join(parts_text).strip()
+    except Exception:
+        pass
+
+    try:
+        logger.error("AI_PROVIDER_EMPTY_TEXT response_repr=%s", repr(response)[:1200])
+    except Exception:
+        logger.error("AI_PROVIDER_EMPTY_TEXT unable_to_repr_response")
+
+    return ""
+
+
 def _safe_json_loads(text: str) -> Dict[str, Any]:
     if not text:
         raise ValueError("لم يصل رد من مزود الذكاء الاصطناعي.")
@@ -817,7 +879,7 @@ async def analyze_legal_question(
         contents=prompt,
         config=types.GenerateContentConfig(temperature=0.2, response_mime_type="application/json"),
     )
-    data = _safe_json_loads(response.text or "")
+    data = _safe_json_loads(_extract_gemini_text(response))
     result = _normalize_legal_result(data, user_role=user_role, selected_case_type=selected_case_type)
     result["legal_sources"] = legal_sources
     return result
@@ -1042,7 +1104,7 @@ async def analyze_legal_question_with_documents(
         contents=[prompt, *file_parts],
         config=types.GenerateContentConfig(temperature=0.2, response_mime_type="application/json"),
     )
-    data = _safe_json_loads(response.text or "")
+    data = _safe_json_loads(_extract_gemini_text(response))
     result = _normalize_legal_result(data, user_role=user_role, selected_case_type=selected_case_type)
     result["legal_sources"] = legal_sources
     result["uploaded_documents"] = [
@@ -1175,7 +1237,7 @@ async def analyze_legal_documents(
         contents=[prompt, *file_parts],
         config=types.GenerateContentConfig(temperature=0.2, response_mime_type="application/json"),
     )
-    data = _safe_json_loads(response.text or "")
+    data = _safe_json_loads(_extract_gemini_text(response))
     result = _normalize_document_result(data, selected_case_type=selected_case_type, user_role=user_role)
     result["uploaded_documents"] = [
         {
@@ -1260,7 +1322,7 @@ async def analyze_legal_document(
         contents=[prompt, file_part],
         config=types.GenerateContentConfig(temperature=0.2, response_mime_type="application/json"),
     )
-    data = _safe_json_loads(response.text or "")
+    data = _safe_json_loads(_extract_gemini_text(response))
     return _normalize_document_result(data, selected_case_type=selected_case_type, user_role=user_role)
 
 

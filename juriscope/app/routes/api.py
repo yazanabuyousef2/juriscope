@@ -71,6 +71,22 @@ def _verify_case_access(case_id: int | None, user_id: int) -> int | None:
     return case_id
 
 
+
+def _safe_side_effect(label: str, query: str, params: tuple = ()) -> Optional[int]:
+    """Run non-critical DB writes without breaking the user's AI answer.
+
+    History/workspace persistence is important, but it must never turn a
+    successful legal analysis into a 500 error because a production database is
+    one migration behind. The error is logged clearly for Render diagnostics.
+    """
+    try:
+        return execute(query, params)
+    except Exception as exc:
+        logger.error("NON_CRITICAL_DB_WRITE_FAILED label=%s error=%s", label, repr(exc))
+        logger.error(traceback.format_exc())
+        return None
+
+
 def _safe_filename(name: str) -> str:
     name = name or "uploaded_document"
     name = re.sub(r"[^A-Za-z0-9_.\-\u0600-\u06FF ]+", "_", name)
@@ -467,7 +483,8 @@ async def analyze(request: Request, payload: LegalQuestionRequest):
 
         final_case_type = result.get("detected_case_type") or selected_case_type
 
-        execute(
+        _safe_side_effect(
+            "case_messages.analyze",
             """
             INSERT INTO case_messages (case_id, user_id, question, answer_json, created_at)
             VALUES (?, ?, ?, ?, ?)
@@ -492,7 +509,7 @@ async def analyze(request: Request, payload: LegalQuestionRequest):
             result["analysis_id"] = analysis_id
 
         if case_id:
-            execute("UPDATE cases SET updated_at = ? WHERE id = ?", (now_iso(), case_id))
+            _safe_side_effect("cases.touch.analyze", "UPDATE cases SET updated_at = ? WHERE id = ?", (now_iso(), case_id))
 
         return result
 
@@ -581,7 +598,8 @@ async def analyze_with_documents(request: Request):
 
         final_case_type = result.get("detected_case_type") or selected_case_type
 
-        execute(
+        _safe_side_effect(
+            "case_messages.analyze_with_documents",
             """
             INSERT INTO case_messages (case_id, user_id, question, answer_json, created_at)
             VALUES (?, ?, ?, ?, ?)
@@ -606,7 +624,7 @@ async def analyze_with_documents(request: Request):
             result["analysis_id"] = analysis_id
 
         if linked_case_id:
-            execute("UPDATE cases SET updated_at = ? WHERE id = ?", (now_iso(), linked_case_id))
+            _safe_side_effect("cases.touch.analyze_with_documents", "UPDATE cases SET updated_at = ? WHERE id = ?", (now_iso(), linked_case_id))
 
         return result
 
@@ -696,7 +714,7 @@ async def analyze_document(request: Request):
         )
 
         if linked_case_id:
-            execute("UPDATE cases SET updated_at = ? WHERE id = ?", (now_iso(), linked_case_id))
+            _safe_side_effect("cases.touch.analyze_with_documents", "UPDATE cases SET updated_at = ? WHERE id = ?", (now_iso(), linked_case_id))
 
         return result
 
@@ -781,7 +799,7 @@ async def run_workspace_tool(request: Request, payload: WorkspaceToolRequest):
                 pass
 
             if linked_case_id:
-                execute("UPDATE cases SET updated_at = ? WHERE id = ?", (now_iso(), linked_case_id))
+                _safe_side_effect("cases.touch.analyze_with_documents", "UPDATE cases SET updated_at = ? WHERE id = ?", (now_iso(), linked_case_id))
 
         return result
 
